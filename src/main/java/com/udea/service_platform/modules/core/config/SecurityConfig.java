@@ -47,6 +47,8 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Rutas públicas de Swagger / OpenAPI
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/api/users/register", "/api/roles", "/api/auth/login", "/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/services").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/services").hasRole("PROVEEDOR")
