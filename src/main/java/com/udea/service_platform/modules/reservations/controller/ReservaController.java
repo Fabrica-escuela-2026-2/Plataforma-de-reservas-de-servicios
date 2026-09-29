@@ -5,6 +5,8 @@ import com.udea.service_platform.modules.reservations.dto.ReservaRequest;
 import com.udea.service_platform.modules.reservations.dto.ReservaResponse;
 import com.udea.service_platform.modules.reservations.service.ReservaService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,12 +19,14 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/reservations")
 @RequiredArgsConstructor
+@Tag(name = "Reservas")
 public class ReservaController {
 
     private final ReservaService reservaService;
 
     @PostMapping
     @PreAuthorize("hasRole('CLIENTE')")
+    @Operation(summary = "Crear una reserva")
     public ResponseEntity<ReservaResponse> createReservation(
             @Valid @RequestBody ReservaRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -32,6 +36,7 @@ public class ReservaController {
 
     @GetMapping("/provider")
     @PreAuthorize("hasRole('PROVEEDOR')")
+    @Operation(summary = "Consultar las reservas del proveedor autenticado")
     public ResponseEntity<Page<ReservaResponse>> getProviderReservations(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(defaultValue = "0") int page,

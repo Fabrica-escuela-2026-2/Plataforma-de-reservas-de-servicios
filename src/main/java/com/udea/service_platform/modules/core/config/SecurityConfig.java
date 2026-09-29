@@ -50,6 +50,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/users/register", "/api/roles", "/api/auth/login", "/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/services").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/services").hasRole("PROVEEDOR")
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

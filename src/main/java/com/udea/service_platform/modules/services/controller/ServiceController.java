@@ -5,6 +5,9 @@ import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.service.ServiceService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,12 +22,14 @@ import java.math.BigDecimal;
 @RestController
 @RequestMapping("/api/services")
 @RequiredArgsConstructor
+@Tag(name = "Servicios")
 public class ServiceController {
 
     private final ServiceService serviceService;
 
     @PostMapping
     @PreAuthorize("hasRole('PROVEEDOR')")
+    @Operation(summary = "Crear un servicio")
     public ResponseEntity<ServiceResponse> createService(
             @Valid @RequestBody ServiceRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
@@ -33,6 +38,8 @@ public class ServiceController {
     }
 
     @GetMapping
+    @Operation(summary = "Consultar el catálogo público de servicios")
+    @SecurityRequirements()
     public ResponseEntity<Page<ServiceResponse>> getPublicCatalog(
             @RequestParam(required = false) Long providerId,
             @RequestParam(required = false) String category,
