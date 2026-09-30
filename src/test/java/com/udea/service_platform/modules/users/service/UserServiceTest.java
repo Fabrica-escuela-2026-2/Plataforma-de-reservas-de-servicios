@@ -1,5 +1,6 @@
 package com.udea.service_platform.modules.users.service;
 
+import com.udea.service_platform.modules.users.dto.ClientDetailResponse;
 import com.udea.service_platform.modules.users.dto.UserRequest;
 import com.udea.service_platform.modules.users.dto.UserResponse;
 import com.udea.service_platform.modules.users.model.Role;
@@ -148,8 +149,7 @@ class UserServiceTest {
     }
 
     @Test
-    void register_withDuplicateEmail_throwsIllegalArgument() {
-        UserRequest request = UserRequest.builder()
+    void register_withDuplicateEmail_throwsIllegalArgument() {        UserRequest request = UserRequest.builder()
                 .nombre("Juan")
                 .correo("existing@test.com")
                 .password("password123")
@@ -165,5 +165,59 @@ class UserServiceTest {
 
         assertEquals("El correo ya está en uso", exception.getMessage());
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void getClientDetail_withClienteRole_returnsDetail() {
+        User cliente = User.builder()
+                .idUsuario(6L)
+                .nombre("Juan")
+                .apellido("Pérez")
+                .correo("juan@test.com")
+                .telefono("3001234567")
+                .numeroDocumento("123456789")
+                .idTipoDocumento(1L)
+                .idCiudad(1L)
+                .estadoCuenta("ACTIVA")
+                .role(clienteRole)
+                .build();
+        when(userRepository.findById(6L)).thenReturn(Optional.of(cliente));
+
+        ClientDetailResponse response = userService.getClientDetail(6L);
+
+        assertNotNull(response);
+        assertEquals(6L, response.getIdUsuario());
+        assertEquals("Juan", response.getNombre());
+        assertEquals("juan@test.com", response.getCorreo());
+    }
+
+    @Test
+    void getClientDetail_withProveedorRole_throwsIllegalArgument() {
+        User proveedor = User.builder()
+                .idUsuario(2L)
+                .nombre("Maria")
+                .correo("maria@test.com")
+                .role(proveedorRole)
+                .build();
+        when(userRepository.findById(2L)).thenReturn(Optional.of(proveedor));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> userService.getClientDetail(2L)
+        );
+
+        assertEquals("El usuario no tiene rol de Cliente", exception.getMessage());
+    }
+
+    @Test
+    void getClientDetail_withNonExistentId_throwsIllegalArgument() {
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> userService.getClientDetail(999L)
+        );
+
+        assertEquals("Usuario no encontrado", exception.getMessage());
     }
 }
