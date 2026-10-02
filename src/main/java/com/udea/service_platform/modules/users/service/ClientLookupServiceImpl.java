@@ -4,6 +4,7 @@ import com.udea.service_platform.modules.users.model.User;
 import com.udea.service_platform.modules.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.Map;
@@ -16,6 +17,7 @@ public class ClientLookupServiceImpl implements ClientLookupService {
     private final UserRepository userRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public ClientDisplayInfo findClientDisplayInfo(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
@@ -28,6 +30,7 @@ public class ClientLookupServiceImpl implements ClientLookupService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Map<Long, ClientDisplayInfo> findClientDisplayInfoByIds(Collection<Long> userIds) {
         return userRepository.findAllById(userIds).stream()
                 .filter(user -> "Cliente".equals(user.getRole().getNombre()))
