@@ -1,5 +1,6 @@
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.resources.repository.RecursoRepository;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.model.Service;
@@ -11,8 +12,13 @@ import lombok.RequiredArgsConstructor;
 public class ServiceService {
 
     private final ServiceRepository serviceRepository;
+    private final RecursoRepository recursoRepository;
 
     public ServiceResponse createService(ServiceRequest request, Long idProveedor) {
+        if (!recursoRepository.existsById(request.getIdRecursos())) {
+            throw new IllegalArgumentException("El recurso seleccionado no existe");
+        }
+
         Service service = Service.builder()
                 .nombre(request.getNombre())
                 .descripcion(request.getDescripcion())
