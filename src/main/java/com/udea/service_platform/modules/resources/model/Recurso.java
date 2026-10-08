@@ -13,6 +13,6 @@ import lombok.*;
 public class Recurso {
 
     @Id
-    @Column(name = "id_recurso")
-    private Long idRecurso;
+    @Column(name = "id_recursos")
+    private Long idRecursos;
 }
