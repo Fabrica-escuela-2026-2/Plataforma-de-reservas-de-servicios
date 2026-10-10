@@ -1,5 +1,6 @@
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.resources.repository.RecursoRepository;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.mapper.ServiceMapper;
@@ -17,9 +18,14 @@ import java.math.BigDecimal;
 public class ServiceServiceImpl implements ServiceService {
 
     private final ServiceRepository serviceRepository;
+    private final RecursoRepository recursoRepository;
 
     @Override
     public ServiceResponse createService(ServiceRequest request, Long idProveedor) {
+        if (!recursoRepository.existsById(request.getIdRecursos())) {
+            throw new IllegalArgumentException("El recurso seleccionado no existe");
+        }
+
         Service service = ServiceMapper.toEntity(request, idProveedor);
 
         Service savedService = serviceRepository.save(service);
