@@ -3,6 +3,7 @@ package com.udea.service_platform.modules.users.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.udea.service_platform.modules.core.exception.GlobalExceptionHandler;
 import com.udea.service_platform.modules.core.security.UserDetailsImpl;
+import com.udea.service_platform.modules.users.dto.ProfileUpdateRequest;
 import com.udea.service_platform.modules.users.dto.ProviderOnboardingRequest;
 import com.udea.service_platform.modules.users.dto.RoleResponse;
 import com.udea.service_platform.modules.users.dto.UserProfileResponse;
@@ -34,6 +35,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -308,5 +310,151 @@ class UserControllerTest {
 
         assertNotNull(preAuthorize, "onboardProvider debe conservar @PreAuthorize");
         assertEquals("hasRole('PROVEEDOR')", preAuthorize.value());
+    }
+
+    private UserProfileResponse buildProfile() {
+        return UserProfileResponse.builder()
+                .idUsuario(5L)
+                .nombre("Maria")
+                .apellido("Gomez")
+                .correo("proveedor@test.com")
+                .telefono("3000000000")
+                .idTipoDocumento(1L)
+                .numeroDocumento("123456789")
+                .idCiudad(2L)
+                .idTipoProveedor(9L)
+                .notasEspeciales("Bio original")
+                .estadoCuenta("ACTIVA")
+                .role(RoleResponse.builder().idRol(2L).nombre("Proveedor de Servicios").build())
+                .build();
+    }
+
+    @Test
+    void getProfile_returns200WithFullProfile() throws Exception {
+        when(userService.getProfile(5L)).thenReturn(buildProfile());
+
+        mockMvc.perform(get("/api/users/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idUsuario").value(5))
+                .andExpect(jsonPath("$.nombre").value("Maria"))
+                .andExpect(jsonPath("$.correo").value("proveedor@test.com"))
+                .andExpect(jsonPath("$.telefono").value("3000000000"))
+                .andExpect(jsonPath("$.idCiudad").value(2))
+                .andExpect(jsonPath("$.idTipoProveedor").value(9))
+                .andExpect(jsonPath("$.estadoCuenta").value("ACTIVA"))
+                .andExpect(jsonPath("$.role.nombre").value("Proveedor de Servicios"));
+
+        verify(userService).getProfile(5L);
+    }
+
+    @Test
+    void getProfile_whenServiceRejects_returns400() throws Exception {
+        when(userService.getProfile(5L))
+                .thenThrow(new IllegalArgumentException("Usuario no encontrado"));
+
+        mockMvc.perform(get("/api/users/me"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Usuario no encontrado"));
+    }
+
+    @Test
+    void updateProfile_withValidPayload_returns200() throws Exception {
+        ProfileUpdateRequest request = ProfileUpdateRequest.builder()
+                .nombre("Pedro")
+                .telefono("3111111111")
+                .build();
+
+        UserProfileResponse response = buildProfile();
+        response.setNombre("Pedro");
+        response.setTelefono("3111111111");
+
+        when(userService.updateProfile(eq(5L), any(ProfileUpdateRequest.class))).thenReturn(response);
+
+        mockMvc.perform(put("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idUsuario").value(5))
+                .andExpect(jsonPath("$.nombre").value("Pedro"))
+                .andExpect(jsonPath("$.telefono").value("3111111111"))
+                .andExpect(jsonPath("$.correo").value("proveedor@test.com"));
+
+        verify(userService).updateProfile(eq(5L), any(ProfileUpdateRequest.class));
+    }
+
+    @Test
+    void updateProfile_withBlankNombre_returns400() throws Exception {
+        String requestJson = """
+                {
+                    "nombre": "   "
+                }
+                """;
+
+        when(userService.updateProfile(any(), any(ProfileUpdateRequest.class)))
+                .thenThrow(new IllegalArgumentException("El nombre no puede estar vacío"));
+
+        mockMvc.perform(put("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("El nombre no puede estar vacío"));
+    }
+
+    @Test
+    void updateProfile_withTooLongTelefono_returns400() throws Exception {
+        ProfileUpdateRequest request = ProfileUpdateRequest.builder()
+                .nombre("Maria")
+                .telefono("1".repeat(256))
+                .build();
+
+        mockMvc.perform(put("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fields.telefono").value("El teléfono no puede superar 255 caracteres"));
+
+        verify(userService, never()).updateProfile(any(), any());
+    }
+
+    @Test
+    void updateProfile_withProtectedFieldsKept_returns200() throws Exception {
+        String requestJson = """
+                {
+                    "nombre": "Maria",
+                    "correo": "hackeado@test.com",
+                    "password": "nueva_clave",
+                    "estadoCuenta": "INACTIVA",
+                    "idRol": 1,
+                    "idTipoProveedor": 99
+                }
+                """;
+
+        when(userService.updateProfile(eq(5L), any(ProfileUpdateRequest.class))).thenReturn(buildProfile());
+
+        mockMvc.perform(put("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.correo").value("proveedor@test.com"))
+                .andExpect(jsonPath("$.estadoCuenta").value("ACTIVA"))
+                .andExpect(jsonPath("$.idTipoProveedor").value(9))
+                .andExpect(jsonPath("$.role.idRol").value(2))
+                .andExpect(jsonPath("$.role.nombre").value("Proveedor de Servicios"));
+
+        verify(userService).updateProfile(eq(5L), any(ProfileUpdateRequest.class));
+    }
+
+    @Test
+    void updateProfile_emptyPayload_returns200NoOp() throws Exception {
+        when(userService.updateProfile(eq(5L), any(ProfileUpdateRequest.class))).thenReturn(buildProfile());
+
+        mockMvc.perform(put("/api/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Maria"))
+                .andExpect(jsonPath("$.correo").value("proveedor@test.com"));
+
+        verify(userService).updateProfile(eq(5L), any(ProfileUpdateRequest.class));
     }
 }

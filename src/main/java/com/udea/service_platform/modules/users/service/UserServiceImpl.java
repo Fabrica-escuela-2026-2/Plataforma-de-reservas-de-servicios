@@ -107,4 +107,38 @@ public class UserServiceImpl implements UserService {
 
         return UserMapper.toUserProfile(savedUser);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileResponse getProfile(Long idUsuario) {
+        User user = userRepository.findById(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        return UserMapper.toUserProfile(user);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileResponse updateProfile(Long idUsuario, ProfileUpdateRequest request) {
+        if (request.getNombre() != null && request.getNombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre no puede estar vacío");
+        }
+
+        User user = userRepository.findById(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (request.getIdCiudad() != null && !userRepository.existsCiudad(request.getIdCiudad())) {
+            throw new IllegalArgumentException("La ciudad seleccionada no existe");
+        }
+
+        if (request.getIdTipoDocumento() != null && !userRepository.existsTipoDocumento(request.getIdTipoDocumento())) {
+            throw new IllegalArgumentException("El tipo de documento no existe");
+        }
+
+        UserMapper.applyProfileUpdate(user, request);
+
+        User savedUser = userRepository.save(user);
+
+        return UserMapper.toUserProfile(savedUser);
+    }
 }

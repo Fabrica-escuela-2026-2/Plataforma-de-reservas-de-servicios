@@ -2,6 +2,7 @@ package com.udea.service_platform.modules.users.service;
 
 import com.udea.service_platform.modules.users.dto.ClientDetailResponse;
 import com.udea.service_platform.modules.users.dto.ClientSummaryResponse;
+import com.udea.service_platform.modules.users.dto.ProfileUpdateRequest;
 import com.udea.service_platform.modules.users.dto.ProviderOnboardingRequest;
 import com.udea.service_platform.modules.users.dto.UserProfileResponse;
 import com.udea.service_platform.modules.users.dto.UserRequest;
@@ -22,4 +23,8 @@ public interface UserService {
     ClientDetailResponse getClientDetail(Long id);
 
     UserProfileResponse onboardProvider(Long idUsuario, ProviderOnboardingRequest request);
+
+    UserProfileResponse getProfile(Long idUsuario);
+
+    UserProfileResponse updateProfile(Long idUsuario, ProfileUpdateRequest request);
 }

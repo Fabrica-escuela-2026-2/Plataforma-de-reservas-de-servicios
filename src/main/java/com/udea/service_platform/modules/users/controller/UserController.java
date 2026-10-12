@@ -32,4 +32,19 @@ public class UserController {
         UserProfileResponse response = userService.onboardProvider(userDetails.getIdUsuario(), request);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getProfile(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        UserProfileResponse response = userService.getProfile(userDetails.getIdUsuario());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserProfileResponse> updateProfile(
+            @Valid @RequestBody ProfileUpdateRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        UserProfileResponse response = userService.updateProfile(userDetails.getIdUsuario(), request);
+        return ResponseEntity.ok(response);
+    }
 }
