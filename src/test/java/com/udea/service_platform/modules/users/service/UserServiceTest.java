@@ -1,10 +1,13 @@
 package com.udea.service_platform.modules.users.service;
 
 import com.udea.service_platform.modules.users.dto.ClientDetailResponse;
+import com.udea.service_platform.modules.users.dto.ProviderOnboardingRequest;
+import com.udea.service_platform.modules.users.dto.UserProfileResponse;
 import com.udea.service_platform.modules.users.dto.UserRequest;
 import com.udea.service_platform.modules.users.dto.UserResponse;
 import com.udea.service_platform.modules.users.model.Role;
 import com.udea.service_platform.modules.users.model.User;
+import com.udea.service_platform.modules.users.repository.ProviderTypeRepository;
 import com.udea.service_platform.modules.users.repository.RoleRepository;
 import com.udea.service_platform.modules.users.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +32,9 @@ class UserServiceTest {
 
     @Mock
     private RoleRepository roleRepository;
+
+    @Mock
+    private ProviderTypeRepository providerTypeRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -219,5 +225,126 @@ class UserServiceTest {
         );
 
         assertEquals("Usuario no encontrado", exception.getMessage());
+    }
+
+    private User buildProveedor() {
+        return User.builder()
+                .idUsuario(5L)
+                .nombre("Maria")
+                .apellido("Gomez")
+                .correo("maria@test.com")
+                .telefono("3000000000")
+                .idTipoDocumento(1L)
+                .numeroDocumento("123456789")
+                .idCiudad(1L)
+                .estadoCuenta("ACTIVA")
+                .role(proveedorRole)
+                .build();
+    }
+
+    @Test
+    void onboardProvider_withValidData_success() {
+        User proveedor = buildProveedor();
+        when(userRepository.findById(5L)).thenReturn(Optional.of(proveedor));
+        when(providerTypeRepository.existsById(2L)).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(proveedor);
+
+        ProviderOnboardingRequest request = ProviderOnboardingRequest.builder()
+                .idTipoProveedor(2L)
+                .telefono("3001112233")
+                .notasEspeciales("Barbero con 5 años de experiencia")
+                .build();
+
+        UserProfileResponse response = userService.onboardProvider(5L, request);
+
+        assertNotNull(response);
+        assertEquals(5L, response.getIdUsuario());
+        assertEquals(2L, response.getIdTipoProveedor());
+        assertEquals("3001112233", response.getTelefono());
+        assertEquals("Barbero con 5 años de experiencia", response.getNotasEspeciales());
+        assertEquals("ACTIVA", response.getEstadoCuenta());
+        assertEquals("Proveedor de Servicios", response.getRole().getNombre());
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void onboardProvider_withNonExistentProviderType_throwsIllegalArgument() {
+        User proveedor = buildProveedor();
+        when(userRepository.findById(5L)).thenReturn(Optional.of(proveedor));
+        when(providerTypeRepository.existsById(999L)).thenReturn(false);
+
+        ProviderOnboardingRequest request = ProviderOnboardingRequest.builder()
+                .idTipoProveedor(999L)
+                .telefono("3001112233")
+                .build();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> userService.onboardProvider(5L, request)
+        );
+
+        assertEquals("El tipo de proveedor no existe", exception.getMessage());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void onboardProvider_withBlankPhone_throwsIllegalArgument() {
+        ProviderOnboardingRequest request = ProviderOnboardingRequest.builder()
+                .idTipoProveedor(2L)
+                .telefono("   ")
+                .build();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> userService.onboardProvider(5L, request)
+        );
+
+        assertEquals("El teléfono es obligatorio", exception.getMessage());
+        verify(userRepository, never()).findById(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void onboardProvider_withNonProviderRole_throwsIllegalArgument() {
+        User cliente = User.builder()
+                .idUsuario(6L)
+                .nombre("Juan")
+                .correo("juan@test.com")
+                .estadoCuenta("ACTIVA")
+                .role(clienteRole)
+                .build();
+        when(userRepository.findById(6L)).thenReturn(Optional.of(cliente));
+
+        ProviderOnboardingRequest request = ProviderOnboardingRequest.builder()
+                .idTipoProveedor(2L)
+                .telefono("3001112233")
+                .build();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> userService.onboardProvider(6L, request)
+        );
+
+        assertEquals("El usuario no tiene rol de Proveedor", exception.getMessage());
+        verify(providerTypeRepository, never()).existsById(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void onboardProvider_withUnknownUser_throwsIllegalArgument() {
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        ProviderOnboardingRequest request = ProviderOnboardingRequest.builder()
+                .idTipoProveedor(2L)
+                .telefono("3001112233")
+                .build();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> userService.onboardProvider(999L, request)
+        );
+
+        assertEquals("Usuario no encontrado", exception.getMessage());
+        verify(userRepository, never()).save(any());
     }
 }

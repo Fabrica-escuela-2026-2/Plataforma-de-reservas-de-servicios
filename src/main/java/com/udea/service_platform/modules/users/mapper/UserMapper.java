@@ -5,6 +5,7 @@ import com.udea.service_platform.modules.users.dto.ClientSummaryResponse;
 import com.udea.service_platform.modules.users.dto.RoleResponse;
 import com.udea.service_platform.modules.users.dto.UserRequest;
 import com.udea.service_platform.modules.users.dto.UserResponse;
+import com.udea.service_platform.modules.users.dto.UserProfileResponse;
 import com.udea.service_platform.modules.users.model.Role;
 import com.udea.service_platform.modules.users.model.User;
 
@@ -48,6 +49,28 @@ public final class UserMapper {
                 .telefono(user.getTelefono())
                 .idCiudad(user.getIdCiudad())
                 .idTipoProveedor(user.getIdTipoProveedor())
+                .role(roleResponse)
+                .build();
+    }
+
+    public static UserProfileResponse toUserProfile(User user) {
+        RoleResponse roleResponse = RoleResponse.builder()
+                .idRol(user.getRole().getIdRol())
+                .nombre(user.getRole().getNombre())
+                .build();
+
+        return UserProfileResponse.builder()
+                .idUsuario(user.getIdUsuario())
+                .nombre(user.getNombre())
+                .apellido(user.getApellido())
+                .correo(user.getCorreo())
+                .telefono(user.getTelefono())
+                .idCiudad(user.getIdCiudad())
+                .idTipoDocumento(user.getIdTipoDocumento())
+                .numeroDocumento(user.getNumeroDocumento())
+                .idTipoProveedor(user.getIdTipoProveedor())
+                .notasEspeciales(user.getNotasEspeciales())
+                .estadoCuenta(user.getEstadoCuenta())
                 .role(roleResponse)
                 .build();
     }

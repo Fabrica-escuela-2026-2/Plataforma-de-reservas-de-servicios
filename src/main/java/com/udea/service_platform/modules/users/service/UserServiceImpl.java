@@ -5,6 +5,7 @@ import com.udea.service_platform.modules.users.mapper.UserMapper;
 import com.udea.service_platform.modules.users.model.Role;
 import com.udea.service_platform.modules.users.model.User;
 import com.udea.service_platform.modules.users.repository.ClientSpecification;
+import com.udea.service_platform.modules.users.repository.ProviderTypeRepository;
 import com.udea.service_platform.modules.users.repository.RoleRepository;
 import com.udea.service_platform.modules.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final ProviderTypeRepository providerTypeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -73,5 +75,36 @@ public class UserServiceImpl implements UserService {
         }
 
         return UserMapper.toClientDetail(user);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileResponse onboardProvider(Long idUsuario, ProviderOnboardingRequest request) {
+        if (request.getTelefono() == null || request.getTelefono().isBlank()) {
+            throw new IllegalArgumentException("El teléfono es obligatorio");
+        }
+
+        if (request.getIdTipoProveedor() == null) {
+            throw new IllegalArgumentException("Debe seleccionar un tipo de proveedor");
+        }
+
+        User user = userRepository.findById(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (!RoleConstants.ROL_PROVEEDOR.equals(user.getRole().getNombre())) {
+            throw new IllegalArgumentException("El usuario no tiene rol de Proveedor");
+        }
+
+        if (!providerTypeRepository.existsById(request.getIdTipoProveedor())) {
+            throw new IllegalArgumentException("El tipo de proveedor no existe");
+        }
+
+        user.setTelefono(request.getTelefono());
+        user.setIdTipoProveedor(request.getIdTipoProveedor());
+        user.setNotasEspeciales(request.getNotasEspeciales());
+
+        User savedUser = userRepository.save(user);
+
+        return UserMapper.toUserProfile(savedUser);
     }
 }
