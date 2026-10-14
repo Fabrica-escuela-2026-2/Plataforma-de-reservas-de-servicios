@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS "Estados_Reserva" (
+  id INTEGER PRIMARY KEY,
+  nombre VARCHAR(50) NOT NULL
+);
