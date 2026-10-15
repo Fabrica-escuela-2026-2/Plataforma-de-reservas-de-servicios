@@ -15,6 +15,8 @@ public interface ServiceService {
 
     ServiceResponse createService(ServiceRequest request, Long idProveedor);
 
+    ServiceResponse inactivateService(Long serviceId, Long idProveedor);
+
     Page<ServiceResponse> getPublicCatalog(Long providerId, String category,
                                            BigDecimal minPrice, BigDecimal maxPrice,
                                            Pageable pageable);
