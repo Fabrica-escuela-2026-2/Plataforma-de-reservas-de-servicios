@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,8 +29,11 @@ public class Horario {
     @Column(name = "id_horario")
     private Integer idHorario;
 
-    @Column(name = "id_dia_semana", nullable = false)
+    @Column(name = "dia_semana", nullable = false)
     private Integer idDiaSemana;
+
+    @Column(name = "id_dia_semana", nullable = false)
+    private Integer idDiaSemanaLegacy;
 
     @Column(name = "hora_inicio", nullable = false)
     private LocalTime horaInicio;
@@ -37,6 +41,15 @@ public class Horario {
     @Column(name = "hora_fin", nullable = false)
     private LocalTime horaFin;
 
-    @Column(name = "id_servicio", nullable = false)
+    @Column(name = "servicio_horarios", nullable = false)
     private Integer idServicio;
+
+    @Column(name = "id_servicio", nullable = false)
+    private Integer idServicioLegacy;
+
+    @PrePersist
+    void sincronizarColumnasLegado() {
+        idDiaSemanaLegacy = idDiaSemana;
+        idServicioLegacy = idServicio;
+    }
 }
