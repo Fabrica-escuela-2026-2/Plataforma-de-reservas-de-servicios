@@ -2,9 +2,11 @@ package com.udea.service_platform.modules.users.mapper;
 
 import com.udea.service_platform.modules.users.dto.ClientDetailResponse;
 import com.udea.service_platform.modules.users.dto.ClientSummaryResponse;
+import com.udea.service_platform.modules.users.dto.ProfileUpdateRequest;
 import com.udea.service_platform.modules.users.dto.RoleResponse;
 import com.udea.service_platform.modules.users.dto.UserRequest;
 import com.udea.service_platform.modules.users.dto.UserResponse;
+import com.udea.service_platform.modules.users.dto.UserProfileResponse;
 import com.udea.service_platform.modules.users.model.Role;
 import com.udea.service_platform.modules.users.model.User;
 
@@ -50,6 +52,57 @@ public final class UserMapper {
                 .idTipoProveedor(user.getIdTipoProveedor())
                 .role(roleResponse)
                 .build();
+    }
+
+    public static UserProfileResponse toUserProfile(User user) {
+        RoleResponse roleResponse = RoleResponse.builder()
+                .idRol(user.getRole().getIdRol())
+                .nombre(user.getRole().getNombre())
+                .build();
+
+        return UserProfileResponse.builder()
+                .idUsuario(user.getIdUsuario())
+                .nombre(user.getNombre())
+                .apellido(user.getApellido())
+                .correo(user.getCorreo())
+                .telefono(user.getTelefono())
+                .idCiudad(user.getIdCiudad())
+                .idTipoDocumento(user.getIdTipoDocumento())
+                .numeroDocumento(user.getNumeroDocumento())
+                .idTipoProveedor(user.getIdTipoProveedor())
+                .notasEspeciales(user.getNotasEspeciales())
+                .estadoCuenta(user.getEstadoCuenta())
+                .role(roleResponse)
+                .build();
+    }
+
+    /**
+     * Partial update: only non-null fields are written.
+     * Protected fields (correo, password, estadoCuenta, role, idTipoProveedor)
+     * are intentionally absent from ProfileUpdateRequest and never touched here.
+     */
+    public static void applyProfileUpdate(User user, ProfileUpdateRequest request) {
+        if (request.getNombre() != null) {
+            user.setNombre(request.getNombre());
+        }
+        if (request.getApellido() != null) {
+            user.setApellido(request.getApellido());
+        }
+        if (request.getTelefono() != null) {
+            user.setTelefono(request.getTelefono());
+        }
+        if (request.getIdCiudad() != null) {
+            user.setIdCiudad(request.getIdCiudad());
+        }
+        if (request.getIdTipoDocumento() != null) {
+            user.setIdTipoDocumento(request.getIdTipoDocumento());
+        }
+        if (request.getNumeroDocumento() != null) {
+            user.setNumeroDocumento(request.getNumeroDocumento());
+        }
+        if (request.getNotasEspeciales() != null) {
+            user.setNotasEspeciales(request.getNotasEspeciales());
+        }
     }
 
     public static ClientSummaryResponse toClientSummary(User user) {

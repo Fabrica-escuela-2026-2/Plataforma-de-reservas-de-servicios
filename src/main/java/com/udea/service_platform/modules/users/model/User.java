@@ -26,7 +26,7 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String password;
 
-    @Column(name = "id_tipo_documento")
+    @Column(name = "tipo_documento")
     private Long idTipoDocumento;
 
     @Column(name = "apellido")
@@ -38,10 +38,10 @@ public class User {
     @Column(name = "telefono")
     private String telefono;
 
-    @Column(name = "id_ciudad")
+    @Column(name = "ciudad_residencia")
     private Long idCiudad;
 
-    @Column(name = "id_tipo_proveedor")
+    @Column(name = "tipo_proveedor")
     private Long idTipoProveedor;
 
     @Column(name = "estado_cuenta", nullable = false)
@@ -52,6 +52,6 @@ public class User {
     private String notasEspeciales;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_rol", referencedColumnName = "id_rol", nullable = false)
+    @JoinColumn(name = "rol_usuario", referencedColumnName = "id_rol", nullable = false)
     private Role role;
 }

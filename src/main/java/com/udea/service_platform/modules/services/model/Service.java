@@ -34,7 +34,7 @@ public class Service {
     @Column(name = "precio", nullable = false)
     private BigDecimal precio;
 
-    @Column(name = "id_usuario_proveedor", nullable = false)
+    @Column(name = "usuario_proveedor", nullable = false)
     private Long idProveedor;
 
     @Column(name = "id_recursos", nullable = false)

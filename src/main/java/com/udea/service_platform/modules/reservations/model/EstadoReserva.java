@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * Domain representation of the reservation states stored in the
- * {@code Reservas.id_estado} column.
+ * {@code Reservas.estado_reserva} column.
  * Single source of truth for DB id <-> UI label mapping.
  */
 @Getter
