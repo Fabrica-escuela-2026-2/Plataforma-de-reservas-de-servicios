@@ -3,6 +3,7 @@ package com.udea.service_platform.modules.services.controller;
 import com.udea.service_platform.modules.core.security.UserDetailsImpl;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
+import com.udea.service_platform.modules.services.dto.ServiceUpdateRequest;
 import com.udea.service_platform.modules.services.service.ServiceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,16 @@ public class ServiceController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         ServiceResponse response = serviceService.createService(request, userDetails.getIdUsuario());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('PROVEEDOR')")
+    public ResponseEntity<ServiceResponse> updateService(
+            @PathVariable Long id,
+            @Valid @RequestBody ServiceUpdateRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        ServiceResponse response = serviceService.updateService(id, request, userDetails.getIdUsuario());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping
