@@ -85,7 +85,7 @@ class ServiceInactivationControllerTest {
 
         mockMvc.perform(patch("/api/services/10/inactivate").with(user(proveedor())))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("No tienes permiso para realizar esta acción"));
+                .andExpect(jsonPath("$.error").value("Acceso denegado"));
     }
 
     @Test
