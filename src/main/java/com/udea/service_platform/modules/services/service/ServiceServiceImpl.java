@@ -1,5 +1,6 @@
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.resources.repository.RecursoRepository;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
@@ -10,6 +11,7 @@ import com.udea.service_platform.modules.services.repository.ServiceSpecificatio
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 
@@ -31,6 +33,23 @@ public class ServiceServiceImpl implements ServiceService {
         Service savedService = serviceRepository.save(service);
 
         return ServiceMapper.toResponse(savedService);
+    }
+
+    @Override
+    public ServiceResponse inactivateService(Long serviceId, Long idProveedor) {
+        Service service = serviceRepository.findById(serviceId)
+                .orElseThrow(() -> new ResourceNotFoundException("El servicio no existe"));
+
+        if (!service.getIdProveedor().equals(idProveedor)) {
+            throw new AccessDeniedException("El servicio no pertenece al proveedor");
+        }
+
+        if (Boolean.TRUE.equals(service.getActivo())) {
+            service.setActivo(false);
+            service = serviceRepository.save(service);
+        }
+
+        return ServiceMapper.toResponse(service);
     }
 
     @Override
