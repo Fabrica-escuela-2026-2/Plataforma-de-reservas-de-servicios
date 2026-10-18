@@ -4,6 +4,7 @@ import com.udea.service_platform.modules.services.model.Service;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 
 @Entity
@@ -32,4 +33,10 @@ public class Reserva {
 
     @Column(name = "fecha_inicio", nullable = false)
     private LocalTime fechaInicio;
+
+    @Column(name = "valor_acordado", precision = 38, scale = 2)
+    private BigDecimal valorAcordado;
+
+    @Column(name = "duracion_acordada")
+    private Integer duracionAcordada;
 }

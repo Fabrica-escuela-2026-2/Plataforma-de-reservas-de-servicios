@@ -32,6 +32,16 @@ public class ServiceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('PROVEEDOR')")
+    public ResponseEntity<ServiceResponse> updateService(
+            @PathVariable Long id,
+            @Valid @RequestBody ServiceRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        ServiceResponse response = serviceService.updateService(id, request, userDetails.getIdUsuario());
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{id}/inactivate")
     @PreAuthorize("hasRole('PROVEEDOR')")
     public ResponseEntity<ServiceResponse> inactivateService(

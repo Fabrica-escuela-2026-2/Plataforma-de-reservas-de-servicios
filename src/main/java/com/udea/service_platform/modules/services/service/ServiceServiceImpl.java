@@ -12,8 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
@@ -57,5 +59,33 @@ public class ServiceServiceImpl implements ServiceService {
         var spec = ServiceSpecification.buildFilter(providerId, category, minPrice, maxPrice);
         return serviceRepository.findAll(spec, pageable)
                 .map(ServiceMapper::toResponse);
+    }
+
+    @Override
+    @Transactional
+    public ServiceResponse updateService(Long id, ServiceRequest request, Long idProveedor) {
+        Service service = serviceRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("El servicio no existe"));
+
+        if (!Objects.equals(service.getIdProveedor(), idProveedor)) {
+            // En main el handler genérico convertiría AccessDeniedException a 500.
+            // Queda como pendiente migrar a 403 cuando se mergee el PR de seguridad.
+            throw new IllegalArgumentException("No tiene permisos para modificar este servicio");
+        }
+
+        if (!recursoRepository.existsById(request.getIdRecursos())) {
+            throw new IllegalArgumentException("El recurso seleccionado no existe");
+        }
+
+        service.setNombre(request.getNombre());
+        service.setDescripcion(request.getDescripcion());
+        service.setCategoria(request.getCategoria());
+        service.setDuracion(request.getDuracion());
+        service.setPrecio(request.getPrecio());
+        service.setIdRecursos(request.getIdRecursos());
+        // No se modifica id, idProveedor, ni activo
+
+        Service savedService = serviceRepository.save(service);
+        return ServiceMapper.toResponse(savedService);
     }
 }

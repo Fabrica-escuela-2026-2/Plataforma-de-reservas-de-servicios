@@ -20,4 +20,6 @@ public interface ServiceService {
     Page<ServiceResponse> getPublicCatalog(Long providerId, String category,
                                            BigDecimal minPrice, BigDecimal maxPrice,
                                            Pageable pageable);
+
+    ServiceResponse updateService(Long id, ServiceRequest request, Long idProveedor);
 }

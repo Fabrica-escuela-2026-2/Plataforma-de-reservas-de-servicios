@@ -23,6 +23,8 @@ public final class ReservaMapper {
                 .idUsuario(idUsuario)
                 .fechaInicio(fechaInicio)
                 .idEstado(EstadoReserva.ACTIVA.getId())
+                .valorAcordado(servicio.getPrecio())
+                .duracionAcordada(servicio.getDuracion())
                 .build();
     }
 
@@ -35,6 +37,8 @@ public final class ReservaMapper {
                 .clienteCorreo(clienteCorreo)
                 .fechaInicio(reserva.getFechaInicio())
                 .estado(EstadoReserva.fromId(reserva.getIdEstado()).getLabel())
+                .valorAcordado(reserva.getValorAcordado())
+                .duracionAcordada(reserva.getDuracionAcordada())
                 .build();
     }
 
@@ -47,6 +51,8 @@ public final class ReservaMapper {
                 .clienteCorreo(clienteCorreo)
                 .fechaInicio(reserva.getFechaInicio())
                 .estado(EstadoReserva.ACTIVA.getLabel())
+                .valorAcordado(reserva.getValorAcordado())
+                .duracionAcordada(reserva.getDuracionAcordada())
                 .build();
     }
 
