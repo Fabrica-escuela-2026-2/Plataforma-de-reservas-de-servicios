@@ -43,6 +43,15 @@ public class ServiceController {
         return ResponseEntity.ok(response);
     }
 
+    @PatchMapping("/{id}/inactivate")
+    @PreAuthorize("hasRole('PROVEEDOR')")
+    public ResponseEntity<ServiceResponse> inactivateService(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        ServiceResponse response = serviceService.inactivateService(id, userDetails.getIdUsuario());
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping
     public ResponseEntity<Page<ServiceResponse>> getPublicCatalog(
             @RequestParam(required = false) Long providerId,
