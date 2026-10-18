@@ -62,7 +62,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
         Map<String, String> body = new HashMap<>();
-        body.put("error", "No tiene permisos para acceder a este recurso");
+        body.put("error", "Acceso denegado");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
