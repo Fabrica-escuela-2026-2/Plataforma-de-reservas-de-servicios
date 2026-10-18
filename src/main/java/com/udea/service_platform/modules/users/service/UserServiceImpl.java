@@ -5,6 +5,7 @@ import com.udea.service_platform.modules.users.mapper.UserMapper;
 import com.udea.service_platform.modules.users.model.Role;
 import com.udea.service_platform.modules.users.model.User;
 import com.udea.service_platform.modules.users.repository.ClientSpecification;
+import com.udea.service_platform.modules.users.repository.ProviderTypeRepository;
 import com.udea.service_platform.modules.users.repository.RoleRepository;
 import com.udea.service_platform.modules.users.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -22,6 +24,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final ProviderTypeRepository providerTypeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -54,6 +57,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ClientSummaryResponse> searchClients(String searchTerm, Pageable pageable) {
         var spec = ClientSpecification.buildFilter(searchTerm);
         return userRepository.findAll(spec, pageable)
@@ -61,6 +65,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ClientDetailResponse getClientDetail(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
@@ -70,5 +75,70 @@ public class UserServiceImpl implements UserService {
         }
 
         return UserMapper.toClientDetail(user);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileResponse onboardProvider(Long idUsuario, ProviderOnboardingRequest request) {
+        if (request.getTelefono() == null || request.getTelefono().isBlank()) {
+            throw new IllegalArgumentException("El teléfono es obligatorio");
+        }
+
+        if (request.getIdTipoProveedor() == null) {
+            throw new IllegalArgumentException("Debe seleccionar un tipo de proveedor");
+        }
+
+        User user = userRepository.findById(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (!RoleConstants.ROL_PROVEEDOR.equals(user.getRole().getNombre())) {
+            throw new IllegalArgumentException("El usuario no tiene rol de Proveedor");
+        }
+
+        if (!providerTypeRepository.existsById(request.getIdTipoProveedor())) {
+            throw new IllegalArgumentException("El tipo de proveedor no existe");
+        }
+
+        user.setTelefono(request.getTelefono());
+        user.setIdTipoProveedor(request.getIdTipoProveedor());
+        user.setNotasEspeciales(request.getNotasEspeciales());
+
+        User savedUser = userRepository.save(user);
+
+        return UserMapper.toUserProfile(savedUser);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileResponse getProfile(Long idUsuario) {
+        User user = userRepository.findById(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        return UserMapper.toUserProfile(user);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileResponse updateProfile(Long idUsuario, ProfileUpdateRequest request) {
+        if (request.getNombre() != null && request.getNombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre no puede estar vacío");
+        }
+
+        User user = userRepository.findById(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (request.getIdCiudad() != null && !userRepository.existsCiudad(request.getIdCiudad())) {
+            throw new IllegalArgumentException("La ciudad seleccionada no existe");
+        }
+
+        if (request.getIdTipoDocumento() != null && !userRepository.existsTipoDocumento(request.getIdTipoDocumento())) {
+            throw new IllegalArgumentException("El tipo de documento no existe");
+        }
+
+        UserMapper.applyProfileUpdate(user, request);
+
+        User savedUser = userRepository.save(user);
+
+        return UserMapper.toUserProfile(savedUser);
     }
 }

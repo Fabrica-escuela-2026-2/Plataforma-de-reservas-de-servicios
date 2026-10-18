@@ -2,6 +2,9 @@ package com.udea.service_platform.modules.users.service;
 
 import com.udea.service_platform.modules.users.dto.ClientDetailResponse;
 import com.udea.service_platform.modules.users.dto.ClientSummaryResponse;
+import com.udea.service_platform.modules.users.dto.ProfileUpdateRequest;
+import com.udea.service_platform.modules.users.dto.ProviderOnboardingRequest;
+import com.udea.service_platform.modules.users.dto.UserProfileResponse;
 import com.udea.service_platform.modules.users.dto.UserRequest;
 import com.udea.service_platform.modules.users.dto.UserResponse;
 import org.springframework.data.domain.Page;
@@ -18,4 +21,10 @@ public interface UserService {
     Page<ClientSummaryResponse> searchClients(String searchTerm, Pageable pageable);
 
     ClientDetailResponse getClientDetail(Long id);
+
+    UserProfileResponse onboardProvider(Long idUsuario, ProviderOnboardingRequest request);
+
+    UserProfileResponse getProfile(Long idUsuario);
+
+    UserProfileResponse updateProfile(Long idUsuario, ProfileUpdateRequest request);
 }

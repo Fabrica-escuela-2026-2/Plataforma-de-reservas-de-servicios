@@ -17,17 +17,17 @@ public class Reserva {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
+    @Column(name = "id_reserva")
     private Long id;
 
-    @Column(name = "id_estado", nullable = false)
+    @Column(name = "estado_reserva", nullable = false)
     private Integer idEstado;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_servicio", referencedColumnName = "id_servicio", nullable = false)
+    @JoinColumn(name = "servicio_reserva", referencedColumnName = "id_servicio", nullable = false)
     private Service servicio;
 
-    @Column(name = "id_usuario", nullable = false)
+    @Column(name = "usuario_reserva", nullable = false)
     private Long idUsuario;
 
     @Column(name = "fecha_inicio", nullable = false)
