@@ -60,8 +60,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
-@ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
         Map<String, String> body = new HashMap<>();
         body.put("error", "No tiene permisos para acceder a este recurso");
@@ -83,6 +81,7 @@ public class GlobalExceptionHandler {
         body.put("error", "El parámetro '" + ex.getName() + "' tiene un formato inválido");
         return ResponseEntity.badRequest().body(body);
     }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
