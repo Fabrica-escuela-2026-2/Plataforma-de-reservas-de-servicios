@@ -30,6 +30,6 @@ class AccessDeniedHandlerStandaloneTest {
         mockMvc.perform(get("/test/access-denied").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("No tiene permisos para acceder a este recurso"));
+                .andExpect(jsonPath("$.error").value("Acceso denegado"));
     }
 }
