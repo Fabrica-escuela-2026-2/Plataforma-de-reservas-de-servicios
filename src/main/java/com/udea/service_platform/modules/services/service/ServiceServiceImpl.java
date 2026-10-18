@@ -4,7 +4,6 @@ import com.udea.service_platform.modules.core.exception.ResourceNotFoundExceptio
 import com.udea.service_platform.modules.resources.repository.RecursoRepository;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
-import com.udea.service_platform.modules.services.dto.ServiceUpdateRequest;
 import com.udea.service_platform.modules.services.mapper.ServiceMapper;
 import com.udea.service_platform.modules.services.model.Service;
 import com.udea.service_platform.modules.services.repository.ServiceRepository;
@@ -64,7 +63,7 @@ public class ServiceServiceImpl implements ServiceService {
 
     @Override
     @Transactional
-    public ServiceResponse updateService(Long id, ServiceUpdateRequest request, Long idProveedor) {
+    public ServiceResponse updateService(Long id, ServiceRequest request, Long idProveedor) {
         Service service = serviceRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("El servicio no existe"));
 

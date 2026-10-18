@@ -2,7 +2,6 @@ package com.udea.service_platform.modules.services.service;
 
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
-import com.udea.service_platform.modules.services.dto.ServiceUpdateRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -22,5 +21,5 @@ public interface ServiceService {
                                            BigDecimal minPrice, BigDecimal maxPrice,
                                            Pageable pageable);
 
-    ServiceResponse updateService(Long id, ServiceUpdateRequest request, Long idProveedor);
+    ServiceResponse updateService(Long id, ServiceRequest request, Long idProveedor);
 }

@@ -2,7 +2,7 @@ package com.udea.service_platform.modules.services.service;
 
 import com.udea.service_platform.modules.resources.repository.RecursoRepository;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
-import com.udea.service_platform.modules.services.dto.ServiceUpdateRequest;
+import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.model.Service;
 import com.udea.service_platform.modules.services.repository.ServiceRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +32,7 @@ class ServiceServiceUpdateTest {
     private ServiceServiceImpl serviceService;
 
     private Service existingService;
-    private ServiceUpdateRequest updateRequest;
+    private ServiceRequest updateRequest;
 
     @BeforeEach
     void setUp() {
@@ -48,7 +48,7 @@ class ServiceServiceUpdateTest {
                 .activo(true)
                 .build();
 
-        updateRequest = ServiceUpdateRequest.builder()
+        updateRequest = ServiceRequest.builder()
                 .nombre("Manicure")
                 .descripcion("Manicure con esmaltado")
                 .categoria("Belleza")

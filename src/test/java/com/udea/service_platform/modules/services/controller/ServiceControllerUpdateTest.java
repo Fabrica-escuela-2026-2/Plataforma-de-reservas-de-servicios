@@ -7,7 +7,7 @@ import com.udea.service_platform.modules.core.security.JwtUtil;
 import com.udea.service_platform.modules.core.security.UserDetailsImpl;
 import com.udea.service_platform.modules.core.security.UserDetailsServiceImpl;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
-import com.udea.service_platform.modules.services.dto.ServiceUpdateRequest;
+import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.service.ServiceService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +55,7 @@ class ServiceControllerUpdateTest {
 
     @Test
     void updateService_duenoProveedor_returns200WithUpdatedData() throws Exception {
-        ServiceUpdateRequest request = ServiceUpdateRequest.builder()
+        ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure Premium")
                 .descripcion("Manicure con esmaltado")
                 .categoria("Belleza")
@@ -76,7 +76,7 @@ class ServiceControllerUpdateTest {
                 .activo(true)
                 .build();
 
-        when(serviceService.updateService(eq(10L), any(ServiceUpdateRequest.class), eq(5L)))
+        when(serviceService.updateService(eq(10L), any(ServiceRequest.class), eq(5L)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/services/10")
@@ -94,7 +94,7 @@ class ServiceControllerUpdateTest {
 
     @Test
     void updateService_bodyInvalido_precioCero_returns400() throws Exception {
-        ServiceUpdateRequest request = ServiceUpdateRequest.builder()
+        ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure")
                 .categoria("Belleza")
                 .duracion(45)
@@ -112,7 +112,7 @@ class ServiceControllerUpdateTest {
 
     @Test
     void updateService_bodyInvalido_duracionCero_returns400() throws Exception {
-        ServiceUpdateRequest request = ServiceUpdateRequest.builder()
+        ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure")
                 .categoria("Belleza")
                 .duracion(0)
@@ -130,7 +130,7 @@ class ServiceControllerUpdateTest {
 
     @Test
     void updateService_bodyInvalido_nombreVacio_returns400() throws Exception {
-        ServiceUpdateRequest request = ServiceUpdateRequest.builder()
+        ServiceRequest request = ServiceRequest.builder()
                 .nombre("")
                 .categoria("Belleza")
                 .duracion(45)
@@ -148,7 +148,7 @@ class ServiceControllerUpdateTest {
 
     @Test
     void updateService_bodyInvalido_categoriaVacia_returns400() throws Exception {
-        ServiceUpdateRequest request = ServiceUpdateRequest.builder()
+        ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure")
                 .categoria("")
                 .duracion(45)
@@ -186,7 +186,7 @@ class ServiceControllerUpdateTest {
 
     @Test
     void updateService_usuarioCliente_returns403() throws Exception {
-        ServiceUpdateRequest request = ServiceUpdateRequest.builder()
+        ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure")
                 .categoria("Belleza")
                 .duracion(45)
@@ -203,7 +203,7 @@ class ServiceControllerUpdateTest {
 
     @Test
     void updateService_servicioInexistente_returns400WithErrorMessage() throws Exception {
-        ServiceUpdateRequest request = ServiceUpdateRequest.builder()
+        ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure")
                 .categoria("Belleza")
                 .duracion(45)
@@ -211,7 +211,7 @@ class ServiceControllerUpdateTest {
                 .idRecursos(1L)
                 .build();
 
-        when(serviceService.updateService(eq(10L), any(ServiceUpdateRequest.class), eq(5L)))
+        when(serviceService.updateService(eq(10L), any(ServiceRequest.class), eq(5L)))
                 .thenThrow(new IllegalArgumentException("El servicio no existe"));
 
         mockMvc.perform(put("/api/services/10")
@@ -224,7 +224,7 @@ class ServiceControllerUpdateTest {
 
     @Test
     void updateService_otroProveedor_returns400WithPermisoMessage() throws Exception {
-        ServiceUpdateRequest request = ServiceUpdateRequest.builder()
+        ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure")
                 .categoria("Belleza")
                 .duracion(45)
@@ -232,7 +232,7 @@ class ServiceControllerUpdateTest {
                 .idRecursos(1L)
                 .build();
 
-        when(serviceService.updateService(eq(10L), any(ServiceUpdateRequest.class), eq(5L)))
+        when(serviceService.updateService(eq(10L), any(ServiceRequest.class), eq(5L)))
                 .thenThrow(new IllegalArgumentException("No tiene permisos para modificar este servicio"));
 
         mockMvc.perform(put("/api/services/10")
@@ -245,7 +245,7 @@ class ServiceControllerUpdateTest {
 
     @Test
     void updateService_idProveedorProvieneDelToken_noDelBody() throws Exception {
-        ServiceUpdateRequest request = ServiceUpdateRequest.builder()
+        ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure")
                 .categoria("Belleza")
                 .duracion(45)
@@ -264,7 +264,7 @@ class ServiceControllerUpdateTest {
                 .activo(true)
                 .build();
 
-        when(serviceService.updateService(eq(10L), any(ServiceUpdateRequest.class), eq(5L)))
+        when(serviceService.updateService(eq(10L), any(ServiceRequest.class), eq(5L)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/services/10")
