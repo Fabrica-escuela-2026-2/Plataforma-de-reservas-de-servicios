@@ -15,4 +15,9 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
 
     @Query("SELECT r FROM Reserva r JOIN r.servicio s WHERE s.idProveedor = :providerId ORDER BY r.fechaInicio DESC")
     Page<Reserva> findByProviderIdOrderByFechaInicioDesc(@Param("providerId") Long providerId, Pageable pageable);
+
+    boolean existsByIdUsuarioAndIdEstado(Long idUsuario, Integer idEstado);
+
+    @Query("SELECT COUNT(r)>0 FROM Reserva r JOIN r.servicio s WHERE s.idProveedor = :providerId AND r.idEstado = :estadoId")
+    boolean existsActiveByProviderId(@Param("providerId") Long providerId, @Param("estadoId") Integer estadoId);
 }
