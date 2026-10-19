@@ -27,4 +27,6 @@ public interface UserService {
     UserProfileResponse getProfile(Long idUsuario);
 
     UserProfileResponse updateProfile(Long idUsuario, ProfileUpdateRequest request);
+
+    void inactivateAccount(Long userId);
 }

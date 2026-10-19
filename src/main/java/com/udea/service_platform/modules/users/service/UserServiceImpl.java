@@ -1,5 +1,7 @@
 package com.udea.service_platform.modules.users.service;
 
+import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
+import com.udea.service_platform.modules.reservations.service.ReservaLookupService;
 import com.udea.service_platform.modules.users.dto.*;
 import com.udea.service_platform.modules.users.mapper.UserMapper;
 import com.udea.service_platform.modules.users.model.Role;
@@ -26,6 +28,7 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final ProviderTypeRepository providerTypeRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ReservaLookupService reservaLookupService;
 
     @Override
     public UserResponse register(UserRequest request) {
@@ -140,5 +143,24 @@ public class UserServiceImpl implements UserService {
         User savedUser = userRepository.save(user);
 
         return UserMapper.toUserProfile(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public void inactivateAccount(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        if (User.ESTADO_INACTIVA.equals(user.getEstadoCuenta())) {
+            return;
+        }
+
+        if (reservaLookupService.hasActiveReservations(userId)) {
+            throw new IllegalArgumentException(
+                    "No puedes inactivar tu cuenta porque tienes reservas activas. Cancela o reprograma las reservas pendientes antes de darte de baja.");
+        }
+
+        user.setEstadoCuenta(User.ESTADO_INACTIVA);
+        userRepository.save(user);
     }
 }
