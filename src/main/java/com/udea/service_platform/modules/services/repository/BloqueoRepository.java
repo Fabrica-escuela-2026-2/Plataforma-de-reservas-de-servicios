@@ -13,4 +13,6 @@ public interface BloqueoRepository extends JpaRepository<Bloqueo, Long> {
             Long idUsuarioProveedor, LocalDate fecha);
 
     Optional<Bloqueo> findByIdBloqueoAndIdUsuarioProveedor(Long idBloqueo, Long idUsuarioProveedor);
+
+    List<Bloqueo> findByIdUsuarioProveedorAndFecha(Long idUsuarioProveedor, LocalDate fecha);
 }
