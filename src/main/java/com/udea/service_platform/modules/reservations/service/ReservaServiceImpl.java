@@ -1,5 +1,6 @@
 package com.udea.service_platform.modules.reservations.service;
 
+import com.udea.service_platform.modules.core.config.TimeConfig;
 import com.udea.service_platform.modules.reservations.dto.ReservaRequest;
 import com.udea.service_platform.modules.reservations.dto.ReservaResponse;
 import com.udea.service_platform.modules.reservations.mapper.ReservaMapper;
@@ -16,6 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,14 +41,24 @@ public class ReservaServiceImpl implements ReservaService {
             throw new IllegalArgumentException("No puedes reservar tu propio servicio");
         }
 
-        LocalTime fechaInicio;
+        LocalDate fecha;
         try {
-            fechaInicio = LocalTime.parse(request.getFechaInicio());
+            fecha = LocalDate.parse(request.getFecha());
+        } catch (Exception e) {
+            throw new IllegalArgumentException(
+                    "Formato de fecha inválido. Use yyyy-MM-dd (ej. 2026-10-20)");
+        }
+
+        LocalTime hora;
+        try {
+            hora = LocalTime.parse(request.getFechaInicio());
         } catch (Exception e) {
             throw new IllegalArgumentException("Formato de hora inválido. Use HH:mm (ej. 14:30)");
         }
 
-        Reserva reserva = ReservaMapper.toEntity(servicio, clientUserId, fechaInicio);
+        Instant horaInicio = fecha.atTime(hora).atZone(TimeConfig.ZONA_BOGOTA).toInstant();
+
+        Reserva reserva = ReservaMapper.toEntity(servicio, clientUserId, horaInicio);
 
         Reserva saved = reservaRepository.save(reserva);
 
