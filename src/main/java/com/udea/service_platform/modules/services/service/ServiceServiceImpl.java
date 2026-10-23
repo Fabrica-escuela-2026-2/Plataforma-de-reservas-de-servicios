@@ -65,12 +65,10 @@ public class ServiceServiceImpl implements ServiceService {
     @Transactional
     public ServiceResponse updateService(Long id, ServiceRequest request, Long idProveedor) {
         Service service = serviceRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("El servicio no existe"));
+                .orElseThrow(() -> new ResourceNotFoundException("El servicio no existe"));
 
         if (!Objects.equals(service.getIdProveedor(), idProveedor)) {
-            // En main el handler genérico convertiría AccessDeniedException a 500.
-            // Queda como pendiente migrar a 403 cuando se mergee el PR de seguridad.
-            throw new IllegalArgumentException("No tiene permisos para modificar este servicio");
+            throw new AccessDeniedException("El servicio no pertenece al proveedor");
         }
 
         if (!recursoRepository.existsById(request.getIdRecursos())) {
