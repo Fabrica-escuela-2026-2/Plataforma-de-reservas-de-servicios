@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "\"Reservas\"")
@@ -31,8 +31,8 @@ public class Reserva {
     @Column(name = "usuario_reserva", nullable = false)
     private Long idUsuario;
 
-    @Column(name = "fecha_inicio", nullable = false)
-    private LocalTime fechaInicio;
+    @Column(name = "hora_inicio")
+    private Instant horaInicio;
 
     @Column(name = "valor_acordado", precision = 38, scale = 2)
     private BigDecimal valorAcordado;

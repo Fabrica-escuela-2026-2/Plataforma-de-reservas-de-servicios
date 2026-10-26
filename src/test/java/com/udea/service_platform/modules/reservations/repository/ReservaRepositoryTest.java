@@ -18,7 +18,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalTime;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Transactional
 @Sql(scripts = "/test-schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class ReservaRepositoryTest {
+
+    private static final Instant HORA_INICIO = Instant.parse("2026-10-20T15:00:00Z");
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
@@ -88,7 +90,7 @@ class ReservaRepositoryTest {
         Reserva r = Reserva.builder()
                 .servicio(service)
                 .idUsuario(cliente.getIdUsuario())
-                .fechaInicio(LocalTime.of(10, 0))
+                .horaInicio(HORA_INICIO)
                 .idEstado(idEstado)
                 .valorAcordado(service.getPrecio())
                 .duracionAcordada(service.getDuracion())
