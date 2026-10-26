@@ -26,7 +26,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 user.getCorreo(),
                 user.getPassword(),
                 user.getNombre(),
-                UserDetailsImpl.mapRole(user.getRole().getNombre())
+                UserDetailsImpl.mapRole(user.getRole().getNombre()),
+                user.getEstadoCuenta()
         );
     }
 }
