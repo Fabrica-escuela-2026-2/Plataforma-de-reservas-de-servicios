@@ -11,6 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -46,5 +48,13 @@ public class UserController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         UserProfileResponse response = userService.updateProfile(userDetails.getIdUsuario(), request);
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/me/inactivate")
+    public ResponseEntity<Map<String, String>> inactivateAccount(
+            @Valid @RequestBody InactivarCuentaRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        userService.inactivateAccount(userDetails.getIdUsuario());
+        return ResponseEntity.ok(Map.of("message", "Cuenta inactivada correctamente. Tu sesión fue cerrada."));
     }
 }

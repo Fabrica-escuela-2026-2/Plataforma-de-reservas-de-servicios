@@ -44,9 +44,12 @@ public class User {
     @Column(name = "tipo_proveedor")
     private Long idTipoProveedor;
 
+    public static final String ESTADO_ACTIVA = "ACTIVA";
+    public static final String ESTADO_INACTIVA = "INACTIVA";
+
     @Column(name = "estado_cuenta", nullable = false)
     @Builder.Default
-    private String estadoCuenta = "ACTIVA";
+    private String estadoCuenta = ESTADO_ACTIVA;
 
     @Column(name = "notas_especiales")
     private String notasEspeciales;
