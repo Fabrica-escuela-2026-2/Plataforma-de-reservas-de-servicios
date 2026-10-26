@@ -3,6 +3,7 @@ package com.udea.service_platform.modules.services.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.udea.service_platform.modules.core.config.SecurityConfig;
 import com.udea.service_platform.modules.core.exception.GlobalExceptionHandler;
+import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.core.security.JwtUtil;
 import com.udea.service_platform.modules.core.security.UserDetailsImpl;
 import com.udea.service_platform.modules.core.security.UserDetailsServiceImpl;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -202,7 +204,7 @@ class ServiceControllerUpdateTest {
     }
 
     @Test
-    void updateService_servicioInexistente_returns400WithErrorMessage() throws Exception {
+    void updateService_servicioInexistente_returns404WithErrorMessage() throws Exception {
         ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure")
                 .categoria("Belleza")
@@ -212,18 +214,18 @@ class ServiceControllerUpdateTest {
                 .build();
 
         when(serviceService.updateService(eq(10L), any(ServiceRequest.class), eq(5L)))
-                .thenThrow(new IllegalArgumentException("El servicio no existe"));
+                .thenThrow(new ResourceNotFoundException("El servicio no existe"));
 
         mockMvc.perform(put("/api/services/10")
                         .with(user(proveedor()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("El servicio no existe"));
     }
 
     @Test
-    void updateService_otroProveedor_returns400WithPermisoMessage() throws Exception {
+    void updateService_otroProveedor_returns403() throws Exception {
         ServiceRequest request = ServiceRequest.builder()
                 .nombre("Manicure")
                 .categoria("Belleza")
@@ -233,14 +235,14 @@ class ServiceControllerUpdateTest {
                 .build();
 
         when(serviceService.updateService(eq(10L), any(ServiceRequest.class), eq(5L)))
-                .thenThrow(new IllegalArgumentException("No tiene permisos para modificar este servicio"));
+                .thenThrow(new AccessDeniedException("El servicio no pertenece al proveedor"));
 
         mockMvc.perform(put("/api/services/10")
                         .with(user(proveedor()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("No tiene permisos para modificar este servicio"));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Acceso denegado"));
     }
 
     @Test

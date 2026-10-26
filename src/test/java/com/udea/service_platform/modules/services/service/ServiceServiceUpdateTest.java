@@ -1,5 +1,6 @@
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.resources.repository.RecursoRepository;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -86,7 +88,7 @@ class ServiceServiceUpdateTest {
     void updateService_servicioInexistente_lanzaExcepcionNoLlamaSave() {
         when(serviceRepository.findById(10L)).thenReturn(Optional.empty());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
                 () -> serviceService.updateService(10L, updateRequest, 5L));
 
         assertEquals("El servicio no existe", ex.getMessage());
@@ -99,10 +101,10 @@ class ServiceServiceUpdateTest {
     void updateService_otroProveedor_lanzaExcepcionNoLlamaSave() {
         when(serviceRepository.findById(10L)).thenReturn(Optional.of(existingService));
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        AccessDeniedException ex = assertThrows(AccessDeniedException.class,
                 () -> serviceService.updateService(10L, updateRequest, 7L));
 
-        assertEquals("No tiene permisos para modificar este servicio", ex.getMessage());
+        assertEquals("El servicio no pertenece al proveedor", ex.getMessage());
         verify(serviceRepository).findById(10L);
         verify(recursoRepository, never()).existsById(any());
         verify(serviceRepository, never()).save(any());
