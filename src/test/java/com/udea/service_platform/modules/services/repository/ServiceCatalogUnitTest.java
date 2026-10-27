@@ -1,21 +1,5 @@
 package com.udea.service_platform.modules.services.repository;
 
-import com.udea.service_platform.modules.services.model.Service;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.jpa.domain.Specification;
-
-import java.math.BigDecimal;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,6 +7,24 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.jpa.domain.Specification;
+
+import com.udea.service_platform.modules.services.model.Service;
+
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 
 /**
  * HU-09 - Consulta y filtrado del catálogo público.
@@ -72,7 +74,7 @@ class ServiceCatalogUnitTest {
         ArgumentCaptor<Predicate[]> andCaptor = ArgumentCaptor.forClass(Predicate[].class);
         verify(cb).and(andCaptor.capture());
         assertEquals(1, andCaptor.getValue().length);
-
+        verify(cb).equal(activoPath, true);
         verify(cb, never()).greaterThanOrEqualTo(any(Expression.class), any(Comparable.class));
         verify(cb, never()).lessThanOrEqualTo(any(Expression.class), any(Comparable.class));
     }

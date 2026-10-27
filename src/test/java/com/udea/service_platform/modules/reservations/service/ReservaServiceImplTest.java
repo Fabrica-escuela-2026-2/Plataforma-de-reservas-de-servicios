@@ -1,3 +1,4 @@
+
 package com.udea.service_platform.modules.reservations.service;
 
 import com.udea.service_platform.modules.reservations.dto.ReservaRequest;
@@ -54,81 +55,161 @@ class ReservaServiceImplTest {
     private ReservaServiceImpl reservaService;
 
     private void stubServicio() {
-        when(serviceLookupService.findActiveService(SERVICE_ID)).thenReturn(servicio());
+        when(serviceLookupService.findActiveService(SERVICE_ID))
+                .thenReturn(servicio());
     }
 
     @Test
     void crearReserva_conFechaYHoraValidas_guardaElInstantCorrecto() {
+        // Arrange
         stubServicio();
+
         when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocacion -> {
             Reserva reserva = invocacion.getArgument(0);
             reserva.setId(100L);
             return reserva;
         });
+
         when(clientLookupService.findClientDisplayInfo(CLIENT_ID))
-                .thenReturn(new ClientDisplayInfo(CLIENT_ID, "Cliente", "cliente@test.com"));
+                .thenReturn(new ClientDisplayInfo(
+                        CLIENT_ID, "Cliente", "cliente@test.com"));
 
         ReservaRequest request = request("2026-10-20", "14:30");
 
-        ReservaResponse response = reservaService.createReservation(request, CLIENT_ID);
+        // Act
+        ReservaResponse response =
+                reservaService.createReservation(request, CLIENT_ID);
 
+        // Assert
         ArgumentCaptor<Reserva> captor = ArgumentCaptor.forClass(Reserva.class);
         Mockito.verify(reservaRepository).save(captor.capture());
 
         Instant esperado = Instant.parse("2026-10-20T19:30:00Z");
+
         assertEquals(esperado, captor.getValue().getHoraInicio());
         assertEquals(LocalTime.of(14, 30), response.getFechaInicio());
         assertEquals(100L, response.getId());
     }
 
     @Test
+    void crearReserva_conServicioActualizado_guardaPrecioYDuracionActuales() {
+        // Arrange
+        Service servicioActualizado = Service.builder()
+                .id(SERVICE_ID)
+                .nombre("Corte")
+                .precio(new BigDecimal("35000.00"))
+                .duracion(45)
+                .idProveedor(PROVIDER_ID)
+                .activo(true)
+                .build();
+
+        when(serviceLookupService.findActiveService(SERVICE_ID))
+                .thenReturn(servicioActualizado);
+
+        when(reservaRepository.save(any(Reserva.class)))
+                .thenAnswer(invocacion -> invocacion.getArgument(0));
+
+        when(clientLookupService.findClientDisplayInfo(CLIENT_ID))
+                .thenReturn(new ClientDisplayInfo(
+                        CLIENT_ID, "Cliente", "cliente@test.com"));
+
+        ReservaRequest request = request("2026-10-20", "14:30");
+
+        // Act
+        reservaService.createReservation(request, CLIENT_ID);
+
+        // Assert
+        ArgumentCaptor<Reserva> captor = ArgumentCaptor.forClass(Reserva.class);
+        Mockito.verify(reservaRepository).save(captor.capture());
+
+        Reserva reservaGuardada = captor.getValue();
+
+        assertEquals(
+                new BigDecimal("35000.00"),
+                reservaGuardada.getValorAcordado());
+
+        assertEquals(45, reservaGuardada.getDuracionAcordada());
+
+        Mockito.verify(serviceLookupService).findActiveService(SERVICE_ID);
+    }
+
+    @Test
     void crearReserva_conFormatoDeFechaInvalido_devuelve400() {
+        // Arrange
         stubServicio();
         ReservaRequest request = request("20/10/2026", "14:30");
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
                 () -> reservaService.createReservation(request, CLIENT_ID));
 
-        assertEquals("Formato de fecha inválido. Use yyyy-MM-dd (ej. 2026-10-20)", ex.getMessage());
+        // Assert
+        assertEquals(
+                "Formato de fecha inválido. Use yyyy-MM-dd (ej. 2026-10-20)",
+                ex.getMessage());
     }
 
     @Test
     void crearReserva_conFormatoDeHoraInvalido_devuelve400() {
+        // Arrange
         stubServicio();
         ReservaRequest request = request("2026-10-20", "25:99");
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
                 () -> reservaService.createReservation(request, CLIENT_ID));
 
-        assertEquals("Formato de hora inválido. Use HH:mm (ej. 14:30)", ex.getMessage());
+        // Assert
+        assertEquals(
+                "Formato de hora inválido. Use HH:mm (ej. 14:30)",
+                ex.getMessage());
     }
 
     @Test
     void crearReserva_delPropioProveedor_devuelve400() {
+        // Arrange
         stubServicio();
         ReservaRequest request = request("2026-10-20", "14:30");
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
                 () -> reservaService.createReservation(request, PROVIDER_ID));
 
+        // Assert
         assertEquals("No puedes reservar tu propio servicio", ex.getMessage());
-        Mockito.verify(reservaRepository, Mockito.never()).save(any(Reserva.class));
+
+        Mockito.verify(reservaRepository, Mockito.never())
+                .save(any(Reserva.class));
     }
 
     @Test
     void listarReservasDelProveedor_convierteLaHoraLocalYElCliente() {
+        // Arrange
         Reserva reserva = reservaExistente(2L);
         Page<Reserva> page = new PageImpl<>(List.of(reserva));
-        when(reservaRepository.findByProviderIdOrderByFechaInicioDesc(eq(PROVIDER_ID), any()))
-                .thenReturn(page);
-        when(clientLookupService.findClientDisplayInfoByIds(any()))
-                .thenReturn(Map.of(2L, new ClientDisplayInfo(2L, "Cliente", "cliente@test.com")));
 
+        when(reservaRepository.findByProviderIdOrderByFechaInicioDesc(
+                eq(PROVIDER_ID), any()))
+                .thenReturn(page);
+
+        when(clientLookupService.findClientDisplayInfoByIds(any()))
+                .thenReturn(Map.of(
+                        2L,
+                        new ClientDisplayInfo(
+                                2L, "Cliente", "cliente@test.com")));
+
+        // Act
         Page<ReservaResponse> result = reservaService.getProviderReservations(
                 PROVIDER_ID, PageRequest.of(0, 10));
 
+        // Assert
         assertEquals(1, result.getTotalElements());
+
         ReservaResponse response = result.getContent().get(0);
+
         assertEquals(LocalTime.of(14, 30), response.getFechaInicio());
         assertEquals(LocalDate.of(2026, 10, 20), response.getFecha());
         assertEquals("Cliente", response.getClienteNombre());
@@ -136,30 +217,45 @@ class ReservaServiceImplTest {
 
     @Test
     void listarReservasDelProveedor_conClienteDesconocido_muestraUnknown() {
+        // Arrange
         Reserva reserva = reservaExistente(2L);
         Page<Reserva> page = new PageImpl<>(List.of(reserva));
-        when(reservaRepository.findByProviderIdOrderByFechaInicioDesc(eq(PROVIDER_ID), any()))
-                .thenReturn(page);
-        when(clientLookupService.findClientDisplayInfoByIds(any())).thenReturn(Map.of());
 
+        when(reservaRepository.findByProviderIdOrderByFechaInicioDesc(
+                eq(PROVIDER_ID), any()))
+                .thenReturn(page);
+
+        when(clientLookupService.findClientDisplayInfoByIds(any()))
+                .thenReturn(Map.of());
+
+        // Act
         Page<ReservaResponse> result = reservaService.getProviderReservations(
                 PROVIDER_ID, PageRequest.of(0, 10));
 
+        // Assert
         assertEquals("Unknown", result.getContent().get(0).getClienteNombre());
     }
 
     @Test
     void listarReservasDelCliente_devuelveElResumenConFecha() {
+        // Arrange
         Reserva reserva = reservaExistente(2L);
-        when(reservaRepository.findByIdUsuarioOrderByFechaInicioDesc(eq(CLIENT_ID), any()))
-                .thenReturn(new PageImpl<>(List.of(reserva)));
-        when(clientLookupService.findClientDisplayInfo(CLIENT_ID))
-                .thenReturn(new ClientDisplayInfo(CLIENT_ID, "Cliente", "cliente@test.com"));
 
+        when(reservaRepository.findByIdUsuarioOrderByFechaInicioDesc(
+                eq(CLIENT_ID), any()))
+                .thenReturn(new PageImpl<>(List.of(reserva)));
+
+        when(clientLookupService.findClientDisplayInfo(CLIENT_ID))
+                .thenReturn(new ClientDisplayInfo(
+                        CLIENT_ID, "Cliente", "cliente@test.com"));
+
+        // Act
         Page<ReservaSummaryResponse> result = reservaService.getClientReservations(
                 CLIENT_ID, PageRequest.of(0, 10));
 
+        // Assert
         ReservaSummaryResponse summary = result.getContent().get(0);
+
         assertEquals(LocalTime.of(14, 30), summary.getFechaInicio());
         assertEquals(LocalDate.of(2026, 10, 20), summary.getFecha());
     }

@@ -1,3 +1,4 @@
+
 package com.udea.service_platform.modules.users.service;
 
 import com.udea.service_platform.modules.users.dto.ClientDetailResponse;
@@ -156,7 +157,8 @@ class UserServiceTest {
     }
 
     @Test
-    void register_withDuplicateEmail_throwsIllegalArgument() {        UserRequest request = UserRequest.builder()
+    void register_withDuplicateEmail_throwsIllegalArgument() {
+        UserRequest request = UserRequest.builder()
                 .nombre("Juan")
                 .correo("existing@test.com")
                 .password("password123")
@@ -303,6 +305,31 @@ class UserServiceTest {
         assertEquals("El teléfono es obligatorio", exception.getMessage());
         verify(userRepository, never()).findById(any());
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void onboardProvider_withNullProviderType_throwsIllegalArgument() {
+        // Arrange
+        ProviderOnboardingRequest request = ProviderOnboardingRequest.builder()
+                .idTipoProveedor(null)
+                .telefono("3001112233")
+                .notasEspeciales("Barbero con experiencia")
+                .build();
+
+        // Act
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> userService.onboardProvider(5L, request)
+        );
+
+        // Assert
+        assertEquals(
+                "Debe seleccionar un tipo de proveedor",
+                exception.getMessage()
+        );
+        verify(userRepository, never()).findById(any());
+        verify(userRepository, never()).save(any());
+        verify(providerTypeRepository, never()).existsById(any());
     }
 
     @Test

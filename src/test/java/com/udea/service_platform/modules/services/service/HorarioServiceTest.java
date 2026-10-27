@@ -72,20 +72,29 @@ class HorarioServiceTest {
     }
 
     private List<DiaSemana> diasSemana() {
-        String[] nombres = {"Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"};
+        String[] nombres = {
+                "Lunes", "Martes", "Miércoles", "Jueves",
+                "Viernes", "Sábado", "Domingo"
+        };
+
         return IntStream.rangeClosed(1, 7)
                 .mapToObj(id -> new DiaSemana(id, nombres[id - 1]))
                 .toList();
     }
 
     private HorarioRequest horario(int dia, String inicio, String fin) {
-        return new HorarioRequest(dia, LocalTime.parse(inicio), LocalTime.parse(fin));
+        return new HorarioRequest(
+                dia,
+                LocalTime.parse(inicio),
+                LocalTime.parse(fin)
+        );
     }
 
     private void stubSaveAllConIds() {
         when(horarioRepository.saveAll(anyList())).thenAnswer(invocation -> {
             List<Horario> entradas = invocation.getArgument(0);
             AtomicInteger seq = new AtomicInteger(1);
+
             return entradas.stream()
                     .map(entrada -> Horario.builder()
                             .idHorario(seq.getAndIncrement())
@@ -100,80 +109,163 @@ class HorarioServiceTest {
 
     @Test
     void defineSchedule_withValidSlots_replacesScheduleAndReturnsSortedResponses() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
         stubSaveAllConIds();
 
+        // Act
         List<HorarioResponse> responses = horarioService.defineSchedule(
                 SERVICE_ID,
-                List.of(horario(1, "14:00", "16:00"), horario(1, "09:00", "11:00")),
-                OWNER_ID);
+                List.of(
+                        horario(1, "14:00", "16:00"),
+                        horario(1, "09:00", "11:00")
+                ),
+                OWNER_ID
+        );
 
+        // Assert
         verify(horarioRepository).deleteByIdServicio(10);
 
-        ArgumentCaptor<List<Horario>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<Horario>> captor =
+                ArgumentCaptor.forClass(List.class);
         verify(horarioRepository).saveAll(captor.capture());
+
+        assertEquals(2, captor.getValue().size());
         assertEquals(1, captor.getValue().get(0).getIdDiaSemana());
-        assertEquals(LocalTime.of(9, 0), captor.getValue().get(0).getHoraInicio());
-        assertEquals(LocalTime.of(14, 0), captor.getValue().get(1).getHoraInicio());
+        assertEquals(
+                LocalTime.of(9, 0),
+                captor.getValue().get(0).getHoraInicio()
+        );
+        assertEquals(
+                LocalTime.of(14, 0),
+                captor.getValue().get(1).getHoraInicio()
+        );
 
         assertEquals(2, responses.size());
         assertEquals("Lunes", responses.get(0).getNombreDia());
-        assertEquals(LocalTime.of(9, 0), responses.get(0).getHoraInicio());
-        assertEquals(LocalTime.of(11, 0), responses.get(0).getHoraFin());
+        assertEquals(
+                LocalTime.of(9, 0),
+                responses.get(0).getHoraInicio()
+        );
+        assertEquals(
+                LocalTime.of(11, 0),
+                responses.get(0).getHoraFin()
+        );
         assertEquals(SERVICE_ID, responses.get(0).getIdServicio());
         assertNotNull(responses.get(0).getIdHorario());
     }
 
     @Test
     void defineSchedule_withNullList_throwsAndPersistsNothing() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> horarioService.defineSchedule(SERVICE_ID, null, OWNER_ID));
+        // Arrange / Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> horarioService.defineSchedule(
+                        SERVICE_ID, null, OWNER_ID
+                )
+        );
 
-        assertEquals("Debe definir al menos un horario para el servicio", ex.getMessage());
-        verifyNoInteractions(serviceRepository, horarioRepository, diaSemanaRepository);
+        // Assert
+        assertEquals(
+                "Debe definir al menos un horario para el servicio",
+                ex.getMessage()
+        );
+        verifyNoInteractions(
+                serviceRepository,
+                horarioRepository,
+                diaSemanaRepository
+        );
     }
 
     @Test
     void defineSchedule_withEmptyList_throwsAndPersistsNothing() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> horarioService.defineSchedule(SERVICE_ID, List.of(), OWNER_ID));
+        // Arrange / Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> horarioService.defineSchedule(
+                        SERVICE_ID, List.of(), OWNER_ID
+                )
+        );
 
-        assertEquals("Debe definir al menos un horario para el servicio", ex.getMessage());
-        verifyNoInteractions(serviceRepository, horarioRepository, diaSemanaRepository);
+        // Assert
+        assertEquals(
+                "Debe definir al menos un horario para el servicio",
+                ex.getMessage()
+        );
+        verifyNoInteractions(
+                serviceRepository,
+                horarioRepository,
+                diaSemanaRepository
+        );
     }
 
     @Test
     void defineSchedule_withUnknownService_throwsAndPersistsNothing() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.empty());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.empty());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> horarioService.defineSchedule(SERVICE_ID, List.of(horario(1, "09:00", "10:00")), OWNER_ID));
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> horarioService.defineSchedule(
+                        SERVICE_ID,
+                        List.of(horario(1, "09:00", "10:00")),
+                        OWNER_ID
+                )
+        );
 
+        // Assert
         assertEquals("El servicio no existe", ex.getMessage());
         verify(horarioRepository, never()).deleteByIdServicio(10);
         verify(horarioRepository, never()).saveAll(anyList());
+        verifyNoInteractions(diaSemanaRepository);
     }
 
     @Test
     void defineSchedule_withNonOwnerProvider_throwsAccessDenied() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
 
-        assertThrows(AccessDeniedException.class,
-                () -> horarioService.defineSchedule(SERVICE_ID, List.of(horario(1, "09:00", "10:00")), OTHER_PROVIDER_ID));
+        // Act
+        assertThrows(
+                AccessDeniedException.class,
+                () -> horarioService.defineSchedule(
+                        SERVICE_ID,
+                        List.of(horario(1, "09:00", "10:00")),
+                        OTHER_PROVIDER_ID
+                )
+        );
 
+        // Assert
         verify(horarioRepository, never()).deleteByIdServicio(10);
         verify(horarioRepository, never()).saveAll(anyList());
+        verifyNoInteractions(diaSemanaRepository);
     }
 
     @Test
     void defineSchedule_withUnknownDay_throwsAndPersistsNothing() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> horarioService.defineSchedule(SERVICE_ID, List.of(horario(8, "09:00", "10:00")), OWNER_ID));
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> horarioService.defineSchedule(
+                        SERVICE_ID,
+                        List.of(horario(8, "09:00", "10:00")),
+                        OWNER_ID
+                )
+        );
 
+        // Assert
         assertEquals("El día de la semana no existe", ex.getMessage());
         verify(horarioRepository, never()).deleteByIdServicio(10);
         verify(horarioRepository, never()).saveAll(anyList());
@@ -181,99 +273,194 @@ class HorarioServiceTest {
 
     @Test
     void defineSchedule_withNullDay_throwsAndPersistsNothing() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
                 () -> horarioService.defineSchedule(
-                        SERVICE_ID, List.of(new HorarioRequest(null, LocalTime.of(9, 0), LocalTime.of(10, 0))), OWNER_ID));
+                        SERVICE_ID,
+                        List.of(new HorarioRequest(
+                                null,
+                                LocalTime.of(9, 0),
+                                LocalTime.of(10, 0)
+                        )),
+                        OWNER_ID
+                )
+        );
 
+        // Assert
         assertEquals("El día de la semana no existe", ex.getMessage());
         verify(horarioRepository, never()).deleteByIdServicio(10);
+        verify(horarioRepository, never()).saveAll(anyList());
     }
 
     @Test
     void defineSchedule_withNullTimes_throwsAndPersistsNothing() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
                 () -> horarioService.defineSchedule(
-                        SERVICE_ID, List.of(new HorarioRequest(1, LocalTime.of(9, 0), null)), OWNER_ID));
+                        SERVICE_ID,
+                        List.of(new HorarioRequest(
+                                1,
+                                LocalTime.of(9, 0),
+                                null
+                        )),
+                        OWNER_ID
+                )
+        );
 
-        assertEquals("La hora de inicio y la hora de fin son obligatorias", ex.getMessage());
+        // Assert
+        assertEquals(
+                "La hora de inicio y la hora de fin son obligatorias",
+                ex.getMessage()
+        );
         verify(horarioRepository, never()).deleteByIdServicio(10);
+        verify(horarioRepository, never()).saveAll(anyList());
     }
 
     @Test
     void defineSchedule_withEqualTimes_throwsAndPersistsNothing() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
                 () -> horarioService.defineSchedule(
-                        SERVICE_ID, List.of(horario(1, "09:00", "09:00")), OWNER_ID));
+                        SERVICE_ID,
+                        List.of(horario(1, "09:00", "09:00")),
+                        OWNER_ID
+                )
+        );
 
-        assertEquals("La hora de fin debe ser posterior a la hora de inicio", ex.getMessage());
+        // Assert
+        assertEquals(
+                "La hora de fin debe ser posterior a la hora de inicio",
+                ex.getMessage()
+        );
         verify(horarioRepository, never()).deleteByIdServicio(10);
+        verify(horarioRepository, never()).saveAll(anyList());
     }
 
     @Test
     void defineSchedule_withFinBeforeInicio_throwsAndPersistsNothing() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
                 () -> horarioService.defineSchedule(
-                        SERVICE_ID, List.of(horario(1, "14:00", "10:00")), OWNER_ID));
+                        SERVICE_ID,
+                        List.of(horario(1, "14:00", "10:00")),
+                        OWNER_ID
+                )
+        );
 
-        assertEquals("La hora de fin debe ser posterior a la hora de inicio", ex.getMessage());
+        // Assert
+        assertEquals(
+                "La hora de fin debe ser posterior a la hora de inicio",
+                ex.getMessage()
+        );
         verify(horarioRepository, never()).deleteByIdServicio(10);
+        verify(horarioRepository, never()).saveAll(anyList());
     }
 
     @Test
     void defineSchedule_withAdjacentSlotsSameDay_persistsBoth() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
         stubSaveAllConIds();
 
+        // Act
         List<HorarioResponse> responses = horarioService.defineSchedule(
                 SERVICE_ID,
-                List.of(horario(1, "10:00", "12:00"), horario(1, "12:00", "14:00")),
-                OWNER_ID);
+                List.of(
+                        horario(1, "10:00", "12:00"),
+                        horario(1, "12:00", "14:00")
+                ),
+                OWNER_ID
+        );
 
+        // Assert
         verify(horarioRepository).deleteByIdServicio(10);
+        verify(horarioRepository).saveAll(anyList());
         assertEquals(2, responses.size());
     }
 
     @Test
     void defineSchedule_withOverlappingSlotsSameDay_throwsAndPersistsNothing() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
                 () -> horarioService.defineSchedule(
                         SERVICE_ID,
-                        List.of(horario(1, "10:00", "12:00"), horario(1, "11:00", "13:00")),
-                        OWNER_ID));
+                        List.of(
+                                horario(1, "10:00", "12:00"),
+                                horario(1, "11:00", "13:00")
+                        ),
+                        OWNER_ID
+                )
+        );
 
-        assertEquals("Los horarios no pueden solaparse en el mismo día", ex.getMessage());
+        // Assert
+        assertEquals(
+                "Los horarios no pueden solaparse en el mismo día",
+                ex.getMessage()
+        );
         verify(horarioRepository, never()).deleteByIdServicio(10);
         verify(horarioRepository, never()).saveAll(anyList());
     }
 
     @Test
     void defineSchedule_withSameTimesDifferentDays_persistsBoth() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
         stubSaveAllConIds();
 
+        // Act
         List<HorarioResponse> responses = horarioService.defineSchedule(
                 SERVICE_ID,
-                List.of(horario(1, "10:00", "12:00"), horario(2, "10:00", "12:00")),
-                OWNER_ID);
+                List.of(
+                        horario(1, "10:00", "12:00"),
+                        horario(2, "10:00", "12:00")
+                ),
+                OWNER_ID
+        );
 
+        // Assert
         verify(horarioRepository).deleteByIdServicio(10);
+        verify(horarioRepository).saveAll(anyList());
         assertEquals(2, responses.size());
         assertEquals(1, responses.get(0).getIdDiaSemana());
         assertEquals(2, responses.get(1).getIdDiaSemana());
@@ -282,29 +469,65 @@ class HorarioServiceTest {
 
     @Test
     void defineSchedule_withOverlapBuriedBetweenLongerSlots_throws() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
                 () -> horarioService.defineSchedule(
                         SERVICE_ID,
-                        List.of(horario(1, "10:00", "20:00"), horario(1, "11:00", "12:00"), horario(1, "13:00", "14:00")),
-                        OWNER_ID));
+                        List.of(
+                                horario(1, "10:00", "20:00"),
+                                horario(1, "11:00", "12:00"),
+                                horario(1, "13:00", "14:00")
+                        ),
+                        OWNER_ID
+                )
+        );
 
-        assertEquals("Los horarios no pueden solaparse en el mismo día", ex.getMessage());
+        // Assert
+        assertEquals(
+                "Los horarios no pueden solaparse en el mismo día",
+                ex.getMessage()
+        );
         verify(horarioRepository, never()).deleteByIdServicio(10);
+        verify(horarioRepository, never()).saveAll(anyList());
     }
 
     @Test
     void getSchedule_withExistingRows_mapsNamesAndOrder() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(diaSemanaRepository.findAll()).thenReturn(diasSemana());
-        when(horarioRepository.findByIdServicio(10)).thenReturn(List.of(
-                Horario.builder().idHorario(1).idDiaSemana(1).horaInicio(LocalTime.of(9, 0)).horaFin(LocalTime.of(11, 0)).idServicio(10).build(),
-                Horario.builder().idHorario(2).idDiaSemana(2).horaInicio(LocalTime.of(14, 0)).horaFin(LocalTime.of(16, 0)).idServicio(10).build()));
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(diaSemanaRepository.findAll())
+                .thenReturn(diasSemana());
+        when(horarioRepository.findByIdServicio(10))
+                .thenReturn(List.of(
+                        Horario.builder()
+                                .idHorario(1)
+                                .idDiaSemana(1)
+                                .horaInicio(LocalTime.of(9, 0))
+                                .horaFin(LocalTime.of(11, 0))
+                                .idServicio(10)
+                                .build(),
+                        Horario.builder()
+                                .idHorario(2)
+                                .idDiaSemana(2)
+                                .horaInicio(LocalTime.of(14, 0))
+                                .horaFin(LocalTime.of(16, 0))
+                                .idServicio(10)
+                                .build()
+                ));
 
-        List<HorarioResponse> responses = horarioService.getSchedule(SERVICE_ID, OWNER_ID);
+        // Act
+        List<HorarioResponse> responses =
+                horarioService.getSchedule(SERVICE_ID, OWNER_ID);
 
+        // Assert
         assertEquals(2, responses.size());
         assertEquals("Lunes", responses.get(0).getNombreDia());
         assertEquals("Martes", responses.get(1).getNombreDia());
@@ -314,50 +537,86 @@ class HorarioServiceTest {
 
     @Test
     void getSchedule_withoutRows_returnsEmptyAndSkipsDayLookup() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
-        when(horarioRepository.findByIdServicio(10)).thenReturn(List.of());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
+        when(horarioRepository.findByIdServicio(10))
+                .thenReturn(List.of());
 
-        List<HorarioResponse> responses = horarioService.getSchedule(SERVICE_ID, OWNER_ID);
+        // Act
+        List<HorarioResponse> responses =
+                horarioService.getSchedule(SERVICE_ID, OWNER_ID);
 
+        // Assert
         assertTrue(responses.isEmpty());
         verifyNoInteractions(diaSemanaRepository);
     }
 
     @Test
     void getSchedule_withUnknownService_throws() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.empty());
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.empty());
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> horarioService.getSchedule(SERVICE_ID, OWNER_ID));
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> horarioService.getSchedule(SERVICE_ID, OWNER_ID)
+        );
 
+        // Assert
         assertEquals("El servicio no existe", ex.getMessage());
         verify(horarioRepository, never()).findByIdServicio(10);
+        verifyNoInteractions(diaSemanaRepository);
     }
 
     @Test
     void getSchedule_withNonOwnerProvider_throwsAccessDenied() {
-        when(serviceRepository.findById(SERVICE_ID)).thenReturn(Optional.of(service));
+        // Arrange
+        when(serviceRepository.findById(SERVICE_ID))
+                .thenReturn(Optional.of(service));
 
-        assertThrows(AccessDeniedException.class,
-                () -> horarioService.getSchedule(SERVICE_ID, OTHER_PROVIDER_ID));
+        // Act
+        assertThrows(
+                AccessDeniedException.class,
+                () -> horarioService.getSchedule(
+                        SERVICE_ID, OTHER_PROVIDER_ID
+                )
+        );
 
+        // Assert
         verify(horarioRepository, never()).findByIdServicio(10);
+        verifyNoInteractions(diaSemanaRepository);
     }
 
     @Test
     void defineSchedule_isTransactionalAndMutating() throws Exception {
-        Method method = HorarioServiceImpl.class.getMethod("defineSchedule", Long.class, List.class, Long.class);
-        Transactional transactional = method.getAnnotation(Transactional.class);
+        // Arrange
+        Method method = HorarioServiceImpl.class.getMethod(
+                "defineSchedule", Long.class, List.class, Long.class
+        );
 
+        // Act
+        Transactional transactional =
+                method.getAnnotation(Transactional.class);
+
+        // Assert
         assertNotNull(transactional);
         assertFalse(transactional.readOnly());
     }
 
     @Test
     void getSchedule_isTransactionalReadOnly() throws Exception {
-        Method method = HorarioServiceImpl.class.getMethod("getSchedule", Long.class, Long.class);
-        Transactional transactional = method.getAnnotation(Transactional.class);
+        // Arrange
+        Method method = HorarioServiceImpl.class.getMethod(
+                "getSchedule", Long.class, Long.class
+        );
 
+        // Act
+        Transactional transactional =
+                method.getAnnotation(Transactional.class);
+
+        // Assert
         assertNotNull(transactional);
         assertTrue(transactional.readOnly());
     }
