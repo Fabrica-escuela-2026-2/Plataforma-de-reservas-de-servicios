@@ -1,3 +1,4 @@
+
 package com.udea.service_platform.modules.services.service;
 
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
@@ -19,6 +20,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,12 +64,19 @@ class ServiceServiceUpdateTest {
 
     @Test
     void updateService_actualizaSoloCamposEditables_idProveedorActivoIntactos() {
-        when(serviceRepository.findById(10L)).thenReturn(Optional.of(existingService));
-        when(recursoRepository.existsById(2L)).thenReturn(true);
-        when(serviceRepository.save(any(Service.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Arrange
+        when(serviceRepository.findById(10L))
+                .thenReturn(Optional.of(existingService));
+        when(recursoRepository.existsById(2L))
+                .thenReturn(true);
+        when(serviceRepository.save(any(Service.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
-        ServiceResponse response = serviceService.updateService(10L, updateRequest, 5L);
+        // Act
+        ServiceResponse response =
+                serviceService.updateService(10L, updateRequest, 5L);
 
+        // Assert: comprobar los campos actualizados en la respuesta
         assertNotNull(response);
         assertEquals(10L, response.getId());
         assertEquals("Manicure", response.getNombre());
@@ -75,22 +84,41 @@ class ServiceServiceUpdateTest {
         assertEquals("Belleza", response.getCategoria());
         assertEquals(45, response.getDuracion());
         assertEquals(new BigDecimal("35000.00"), response.getPrecio());
-        assertEquals(5L, response.getIdProveedor()); // intacto
+        assertEquals(5L, response.getIdProveedor());
         assertEquals(2L, response.getIdRecursos());
-        assertTrue(response.getActivo()); // intacto
+        assertTrue(response.getActivo());
+
+        // Assert: comprobar que la entidad guardada conserva los datos protegidos
+        verify(serviceRepository).save(argThat(saved ->
+                saved.getId().equals(10L)
+                        && saved.getIdProveedor().equals(5L)
+                        && Boolean.TRUE.equals(saved.getActivo())
+                        && saved.getNombre().equals("Manicure")
+                        && saved.getDescripcion().equals("Manicure con esmaltado")
+                        && saved.getCategoria().equals("Belleza")
+                        && saved.getDuracion().equals(45)
+                        && saved.getPrecio().compareTo(
+                                new BigDecimal("35000.00")) == 0
+                        && saved.getIdRecursos().equals(2L)
+        ));
 
         verify(serviceRepository).findById(10L);
         verify(recursoRepository).existsById(2L);
-        verify(serviceRepository).save(any(Service.class));
     }
 
     @Test
     void updateService_servicioInexistente_lanzaExcepcionNoLlamaSave() {
-        when(serviceRepository.findById(10L)).thenReturn(Optional.empty());
+        // Arrange
+        when(serviceRepository.findById(10L))
+                .thenReturn(Optional.empty());
 
-        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
-                () -> serviceService.updateService(10L, updateRequest, 5L));
+        // Act
+        ResourceNotFoundException ex = assertThrows(
+                ResourceNotFoundException.class,
+                () -> serviceService.updateService(10L, updateRequest, 5L)
+        );
 
+        // Assert
         assertEquals("El servicio no existe", ex.getMessage());
         verify(serviceRepository).findById(10L);
         verify(recursoRepository, never()).existsById(any());
@@ -99,12 +127,21 @@ class ServiceServiceUpdateTest {
 
     @Test
     void updateService_otroProveedor_lanzaExcepcionNoLlamaSave() {
-        when(serviceRepository.findById(10L)).thenReturn(Optional.of(existingService));
+        // Arrange
+        when(serviceRepository.findById(10L))
+                .thenReturn(Optional.of(existingService));
 
-        AccessDeniedException ex = assertThrows(AccessDeniedException.class,
-                () -> serviceService.updateService(10L, updateRequest, 7L));
+        // Act
+        AccessDeniedException ex = assertThrows(
+                AccessDeniedException.class,
+                () -> serviceService.updateService(10L, updateRequest, 7L)
+        );
 
-        assertEquals("El servicio no pertenece al proveedor", ex.getMessage());
+        // Assert
+        assertEquals(
+                "El servicio no pertenece al proveedor",
+                ex.getMessage()
+        );
         verify(serviceRepository).findById(10L);
         verify(recursoRepository, never()).existsById(any());
         verify(serviceRepository, never()).save(any());
@@ -112,13 +149,23 @@ class ServiceServiceUpdateTest {
 
     @Test
     void updateService_recursoInexistente_lanzaExcepcionNoLlamaSave() {
-        when(serviceRepository.findById(10L)).thenReturn(Optional.of(existingService));
-        when(recursoRepository.existsById(2L)).thenReturn(false);
+        // Arrange
+        when(serviceRepository.findById(10L))
+                .thenReturn(Optional.of(existingService));
+        when(recursoRepository.existsById(2L))
+                .thenReturn(false);
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> serviceService.updateService(10L, updateRequest, 5L));
+        // Act
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> serviceService.updateService(10L, updateRequest, 5L)
+        );
 
-        assertEquals("El recurso seleccionado no existe", ex.getMessage());
+        // Assert
+        assertEquals(
+                "El recurso seleccionado no existe",
+                ex.getMessage()
+        );
         verify(serviceRepository).findById(10L);
         verify(recursoRepository).existsById(2L);
         verify(serviceRepository, never()).save(any());
