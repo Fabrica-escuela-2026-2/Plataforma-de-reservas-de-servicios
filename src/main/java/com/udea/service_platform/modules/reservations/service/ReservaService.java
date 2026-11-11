@@ -14,6 +14,8 @@ public interface ReservaService {
 
     ReservaResponse createReservation(ReservaRequest request, Long clientUserId);
 
+    ReservaResponse cancelReservation(Long reservationId, Long actorUserId);
+
     Page<ReservaResponse> getProviderReservations(Long providerId, Pageable pageable);
 
     Page<ReservaSummaryResponse> getClientReservations(Long clienteId, Pageable pageable);

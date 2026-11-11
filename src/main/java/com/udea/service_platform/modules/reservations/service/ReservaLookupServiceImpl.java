@@ -19,14 +19,14 @@ public class ReservaLookupServiceImpl implements ReservaLookupService {
             return false;
         }
 
-        boolean hasAsClient = reservaRepository.existsByIdUsuarioAndIdEstado(userId,
-                EstadoReserva.ACTIVA.getId());
+        boolean hasAsClient = reservaRepository.existsByIdUsuarioAndIdEstadoIn(userId,
+                EstadoReserva.occupyingStateIds());
         if (hasAsClient) {
             return true;
         }
 
-        boolean hasAsProvider = reservaRepository.existsActiveByProviderId(userId,
-                EstadoReserva.ACTIVA.getId());
+        boolean hasAsProvider = reservaRepository.existsByProviderIdAndIdEstadoIn(userId,
+                EstadoReserva.occupyingStateIds());
         return hasAsProvider;
     }
 }
