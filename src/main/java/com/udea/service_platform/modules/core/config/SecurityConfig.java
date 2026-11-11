@@ -2,6 +2,7 @@ package com.udea.service_platform.modules.core.config;
 
 import com.udea.service_platform.modules.core.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -42,9 +44,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                           CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(e -> e.authenticationEntryPoint(
@@ -66,16 +69,43 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * CORS restringido a los orígenes declarados en {@code app.cors.allowed-origins}
+     * (variable de entorno {@code CORS_ORIGINS}). No se admite comodín: si la lista
+     * está vacía o contiene "*", la aplicación no arranca.
+     */
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins}") String allowedOrigins) {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedOrigins(parseAllowedOrigins(allowedOrigins));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    static List<String> parseAllowedOrigins(String rawOrigins) {
+        if (rawOrigins == null || rawOrigins.isBlank()) {
+            throw new IllegalStateException("app.cors.allowed-origins no puede estar vacío");
+        }
+
+        List<String> origins = Arrays.stream(rawOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+
+        if (origins.isEmpty()) {
+            throw new IllegalStateException("app.cors.allowed-origins no puede estar vacío");
+        }
+
+        if (origins.stream().anyMatch(origin -> origin.contains("*"))) {
+            throw new IllegalStateException("app.cors.allowed-origins no puede contener comodines (*)");
+        }
+
+        return origins;
     }
 }
