@@ -17,5 +17,5 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         # Orígenes permitidos por CORS (sin comodín). REEMPLAZAR por la URL real del frontend desplegado,
-        # por ejemplo https://mi-frontend.onrender.com, antes de usar la API desde ese frontend.
-        value: http://localhost:3000,http://localhost:4200,http://localhost:5173
+
+        value: https://frontend-service-platform.vercel.app,http://localhost:3000,http://localhost:5173
