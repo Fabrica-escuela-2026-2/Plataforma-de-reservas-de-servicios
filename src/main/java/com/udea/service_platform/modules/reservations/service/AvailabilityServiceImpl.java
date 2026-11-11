@@ -13,15 +13,18 @@ import com.udea.service_platform.modules.services.model.Service;
 import com.udea.service_platform.modules.services.service.ScheduleLookupService;
 import com.udea.service_platform.modules.services.service.ServiceLookupService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
 public class AvailabilityServiceImpl implements AvailabilityService {
@@ -50,7 +53,7 @@ public class AvailabilityServiceImpl implements AvailabilityService {
         List<BloqueoFranja> blocks = scheduleLookupService.findProviderBlocks(
                 servicio.getIdProveedor(), fecha);
 
-        List<Reserva> reservas = loadActiveReservations(serviceId, fecha);
+        List<Reserva> reservas = loadOccupyingReservations(serviceId, fecha);
 
         List<AvailabilitySlotResponse> slots = buildSlots(fecha, servicio, schedule, blocks, reservas);
 
@@ -62,12 +65,24 @@ public class AvailabilityServiceImpl implements AvailabilityService {
                 .build();
     }
 
-    private List<Reserva> loadActiveReservations(Long serviceId, LocalDate fecha) {
-        Instant inicioDia = fecha.atStartOfDay(TimeConfig.ZONA_BOGOTA).toInstant();
-        Instant inicioSiguiente = fecha.plusDays(1).atStartOfDay(TimeConfig.ZONA_BOGOTA).toInstant();
+    private List<Reserva> loadOccupyingReservations(Long serviceId, LocalDate fecha) {
+        // La fecha del endpoint es local (America/Bogota). La medianoche local
+        // se convierte a Instant (UTC) antes de consultar Reserva.horaInicio,
+        // que es un timestamptz. Ej.: 2026-11-19 00:00 Bogota = 2026-11-19T05:00Z.
+        Instant inicioDia = inicioDelDiaBogota(fecha);
+        Instant inicioSiguiente = inicioDelDiaBogota(fecha.plusDays(1));
 
-        return reservaRepository.findActiveReservationsInRange(
-                serviceId, EstadoReserva.ACTIVA.getId(), inicioDia, inicioSiguiente);
+        List<Reserva> reservas = reservaRepository.findOccupyingReservationsInRange(
+                serviceId, EstadoReserva.occupyingStateIds(), inicioDia, inicioSiguiente);
+
+        log.debug("Disponibilidad servicio={} fechaLocal={} rangoUTC=[{}, {}) reservasOcupantes={}",
+                serviceId, fecha, inicioDia, inicioSiguiente, reservas.size());
+
+        return reservas;
+    }
+
+    private Instant inicioDelDiaBogota(LocalDate fecha) {
+        return fecha.atStartOfDay(TimeConfig.ZONA_BOGOTA).toInstant();
     }
 
     private List<AvailabilitySlotResponse> buildSlots(LocalDate fecha, Service servicio,
@@ -125,7 +140,7 @@ public class AvailabilityServiceImpl implements AvailabilityService {
         if (isBlocked(inicio, fin, blocks)) {
             return EstadoSlot.BLOQUEADA;
         }
-        if (isOccupied(inicio, duracion, fecha, reservas)) {
+        if (isOccupied(inicio, fin, duracion, fecha, reservas)) {
             return EstadoSlot.OCUPADA;
         }
         return EstadoSlot.LIBRE;
@@ -148,28 +163,46 @@ public class AvailabilityServiceImpl implements AvailabilityService {
         return false;
     }
 
-    private boolean isOccupied(int inicio, int duracion, LocalDate fecha, List<Reserva> reservas) {
-        int finSlot = inicio + duracion;
+    private boolean isOccupied(int inicio, int fin, int duracion, LocalDate fecha,
+                               List<Reserva> reservas) {
+        // Se comparan intervalos absolutos (Instant). El slot se construye
+        // como hora local de Bogota y se convierte a UTC; la reserva ya esta
+        // en UTC. Asi una reserva a las 22:00 Bogota (03:00Z del dia
+        // siguiente) se cruza correctamente con su slot.
+        Instant slotInicio = aInstantBogota(fecha, inicio);
+        Instant slotFin = aInstantBogota(fecha, fin);
 
         for (Reserva reserva : reservas) {
-            if (reserva.getHoraInicio() == null) {
+            if (reserva.getHoraInicio() == null || reserva.getIdEstado() == null) {
                 continue;
             }
-            if (!EstadoReserva.ACTIVA.getId().equals(reserva.getIdEstado())) {
+            if (!EstadoReserva.fromId(reserva.getIdEstado()).occupiesSchedule()) {
                 continue;
             }
-            LocalDate fechaReserva = reserva.getHoraInicio().atZone(TimeConfig.ZONA_BOGOTA).toLocalDate();
-            if (!fecha.equals(fechaReserva)) {
-                continue;
-            }
-            int inicioReserva = aMinutos(reserva.getHoraInicio().atZone(TimeConfig.ZONA_BOGOTA).toLocalTime());
-            int finReserva = inicioReserva + resolveDuracion(reserva, duracion);
 
-            if (inicioReserva < finSlot && finReserva > inicio) {
+            Instant reservaInicio = reserva.getHoraInicio();
+            Instant reservaFin = reservaInicio.plus(
+                    resolveDuracion(reserva, duracion), ChronoUnit.MINUTES);
+
+            if (reservaInicio.isBefore(slotFin) && reservaFin.isAfter(slotInicio)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Convierte un minuto local de Bogota (puede superar 1440 cuando la franja
+     * cruza medianoche) al Instant UTC equivalente.
+     */
+    private Instant aInstantBogota(LocalDate fecha, int minutosDelDia) {
+        int diasExtra = Math.floorDiv(minutosDelDia, MINUTOS_POR_DIA);
+        int minutosNormalizados = Math.floorMod(minutosDelDia, MINUTOS_POR_DIA);
+
+        return fecha.plusDays(diasExtra)
+                .atTime(LocalTime.ofSecondOfDay(minutosNormalizados * 60L))
+                .atZone(TimeConfig.ZONA_BOGOTA)
+                .toInstant();
     }
 
     private int resolveDuracion(Reserva reserva, int duracionServicio) {
