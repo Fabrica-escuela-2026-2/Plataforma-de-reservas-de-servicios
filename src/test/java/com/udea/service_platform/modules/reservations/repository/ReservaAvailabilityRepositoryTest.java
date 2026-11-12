@@ -1,6 +1,7 @@
 package com.udea.service_platform.modules.reservations.repository;
 
 import com.udea.service_platform.TestEmbeddedPostgres;
+import com.udea.service_platform.modules.core.config.TimeConfig;
 import com.udea.service_platform.modules.reservations.model.EstadoReserva;
 import com.udea.service_platform.modules.reservations.model.Reserva;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +19,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,8 +56,9 @@ class ReservaAvailabilityRepositoryTest {
 
     @BeforeEach
     void prepararDatos() throws Exception {
-        inicioRango = FECHA.atStartOfDay().toInstant(ZoneOffset.UTC);
-        finRango = FECHA.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        // El dia del endpoint es local (America/Bogota), no UTC.
+        inicioRango = FECHA.atStartOfDay(TimeConfig.ZONA_BOGOTA).toInstant();
+        finRango = FECHA.plusDays(1).atStartOfDay(TimeConfig.ZONA_BOGOTA).toInstant();
 
         try (Connection connection = abrirConexion(); Statement statement = connection.createStatement()) {
             limpiar(statement);
@@ -72,17 +73,46 @@ class ReservaAvailabilityRepositoryTest {
 
     @Test
     void devuelveSoloReservasActivasDelServicioEnElRango() {
-        List<Reserva> reservas = reservaRepository.findActiveReservationsInRange(
-                SERVICE_ID, EstadoReserva.ACTIVA.getId(), inicioRango, finRango);
+        List<Reserva> reservas = reservaRepository.findOccupyingReservationsInRange(
+                SERVICE_ID, EstadoReserva.occupyingStateIds(), inicioRango, finRango);
 
         assertEquals(1, reservas.size());
         assertEquals(inicioRango.plusSeconds(3600), reservas.get(0).getHoraInicio());
     }
 
     @Test
+    void rangoDelDiaLocalBogotaSeConvierteAUtc() {
+        // 2026-10-20 00:00 Bogota (UTC-5) = 2026-10-20T05:00Z.
+        assertEquals(Instant.parse("2026-10-20T05:00:00Z"), inicioRango);
+        assertEquals(Instant.parse("2026-10-21T05:00:00Z"), finRango);
+    }
+
+    @Test
+    void incluyeReservaDeLas22BogotaAunqueSuUtcSeaDelDiaSiguiente() throws Exception {
+        Instant veintidosBogota = FECHA.atTime(22, 0)
+                .atZone(TimeConfig.ZONA_BOGOTA).toInstant();
+        assertEquals(Instant.parse("2026-10-21T03:00:00Z"), veintidosBogota);
+
+        try (Connection connection = abrirConexion();
+             Statement statement = connection.createStatement()) {
+            insertarReserva(statement, SERVICE_ID, EstadoReserva.ACTIVA.getId(), veintidosBogota);
+            insertarReserva(statement, SERVICE_ID, EstadoReserva.CANCELADA.getId(),
+                    veintidosBogota.plusSeconds(1800));
+        }
+
+        List<Reserva> reservas = reservaRepository.findOccupyingReservationsInRange(
+                SERVICE_ID, EstadoReserva.occupyingStateIds(), inicioRango, finRango);
+
+        assertTrue(reservas.stream()
+                .anyMatch(r -> veintidosBogota.equals(r.getHoraInicio())));
+        assertTrue(reservas.stream()
+                .noneMatch(r -> veintidosBogota.plusSeconds(1800).equals(r.getHoraInicio())));
+    }
+
+    @Test
     void excluyeFilasConHoraInicioNula() {
-        List<Reserva> reservas = reservaRepository.findActiveReservationsInRange(
-                SERVICE_ID, EstadoReserva.ACTIVA.getId(), inicioRango, finRango);
+        List<Reserva> reservas = reservaRepository.findOccupyingReservationsInRange(
+                SERVICE_ID, EstadoReserva.occupyingStateIds(), inicioRango, finRango);
 
         assertTrue(reservas.stream().allMatch(r -> r.getHoraInicio() != null));
     }

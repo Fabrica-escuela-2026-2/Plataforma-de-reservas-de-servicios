@@ -1,9 +1,17 @@
 package com.udea.service_platform.modules.reservations.service;
 
 import com.udea.service_platform.modules.core.config.TimeConfig;
+import com.udea.service_platform.modules.core.exception.ConflictException;
+import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.reservations.dto.ReservaRequest;
+import com.udea.service_platform.modules.reservations.dto.ReservaRescheduleRequest;
 import com.udea.service_platform.modules.reservations.dto.ReservaResponse;
+import com.udea.service_platform.modules.reservations.dto.ReservaStatusUpdateRequest;
+import com.udea.service_platform.modules.reservations.dto.RescheduleSlotQuery;
+import com.udea.service_platform.modules.reservations.event.ReservaEstadoCambiadoEvent;
+import com.udea.service_platform.modules.reservations.event.ReservaReprogramadaEvent;
 import com.udea.service_platform.modules.reservations.mapper.ReservaMapper;
+import com.udea.service_platform.modules.reservations.model.EstadoReserva;
 import com.udea.service_platform.modules.reservations.model.Reserva;
 import com.udea.service_platform.modules.reservations.repository.ReservaRepository;
 import com.udea.service_platform.modules.services.service.ServiceLookupService;
@@ -12,8 +20,10 @@ import com.udea.service_platform.modules.users.service.ClientDisplayInfo;
 import com.udea.service_platform.modules.users.service.ClientLookupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +31,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -31,6 +43,11 @@ public class ReservaServiceImpl implements ReservaService {
     private final ReservaRepository reservaRepository;
     private final ServiceLookupService serviceLookupService;
     private final ClientLookupService clientLookupService;
+    private final ReservaCancellationPolicy cancellationPolicy;
+    private final ReservaStatusTransitionPolicy statusTransitionPolicy;
+    private final ReservaReschedulePolicy reschedulePolicy;
+    private final AvailabilityService availabilityService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     public ReservaResponse createReservation(ReservaRequest request, Long clientUserId) {
@@ -69,6 +86,138 @@ public class ReservaServiceImpl implements ReservaService {
                 servicio.getNombre(),
                 client.nombreCompleto(),
                 client.correo());
+    }
+
+    @Override
+    @Transactional
+    public ReservaResponse cancelReservation(Long reservationId, Long actorUserId) {
+        Reserva reserva = reservaRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("La reserva no existe"));
+
+        ReservaCancellationPolicy.CancellationActor actor =
+                cancellationPolicy.resolveActor(reserva, actorUserId);
+        cancellationPolicy.validateCancellation(reserva, actor);
+
+        EstadoReserva estadoAnterior = EstadoReserva.fromId(reserva.getIdEstado());
+
+        reserva.setIdEstado(EstadoReserva.CANCELADA.getId());
+        Reserva saved = reservaRepository.save(reserva);
+
+        applicationEventPublisher.publishEvent(new ReservaEstadoCambiadoEvent(
+                saved.getId(),
+                actorUserId,
+                estadoAnterior,
+                EstadoReserva.CANCELADA,
+                Instant.now()));
+
+        log.info("Reserva {} cancelada por usuario {} como {}",
+                reservationId, actorUserId, actor);
+
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public ReservaResponse updateStatus(Long reservationId,
+                                        ReservaStatusUpdateRequest request,
+                                        Long actorUserId) {
+        Reserva reserva = reservaRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("La reserva no existe"));
+
+        if (reserva.getServicio() == null
+                || !Objects.equals(reserva.getServicio().getIdProveedor(), actorUserId)) {
+            throw new AccessDeniedException(
+                    "No tienes permiso para actualizar esta reserva");
+        }
+
+        EstadoReserva estadoNuevo = statusTransitionPolicy.parseTarget(request.getEstado());
+        statusTransitionPolicy.validate(reserva, estadoNuevo);
+
+        EstadoReserva estadoAnterior = EstadoReserva.fromId(reserva.getIdEstado());
+
+        reserva.setIdEstado(estadoNuevo.getId());
+        Reserva saved = reservaRepository.save(reserva);
+
+        applicationEventPublisher.publishEvent(new ReservaEstadoCambiadoEvent(
+                saved.getId(),
+                actorUserId,
+                estadoAnterior,
+                estadoNuevo,
+                Instant.now()));
+
+        log.info("Reserva {} actualizada de {} a {} por proveedor {}",
+                reservationId, estadoAnterior, estadoNuevo, actorUserId);
+
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public ReservaResponse rescheduleReservation(Long reservationId,
+                                                 ReservaRescheduleRequest request,
+                                                 Long actorUserId) {
+        Reserva reserva = reservaRepository.findByIdForUpdate(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("La reserva no existe"));
+
+        reschedulePolicy.validateActor(reserva, actorUserId);
+        reschedulePolicy.validateState(reserva);
+
+        LocalDate fecha = reschedulePolicy.parseFecha(request.getFecha());
+        LocalTime hora = reschedulePolicy.parseHora(request.getFechaInicio());
+
+        Integer duracionServicio = reserva.getServicio().getDuracion();
+        int duracionServicioSegura = duracionServicio != null ? duracionServicio : 0;
+        int duracionReserva = reserva.getDuracionAcordada() != null
+                ? reserva.getDuracionAcordada()
+                : duracionServicioSegura;
+
+        if (duracionReserva <= 0 || duracionServicioSegura <= 0) {
+            throw new ConflictException("La reserva no tiene una duración válida");
+        }
+
+        availabilityService.validateRescheduleSlot(new RescheduleSlotQuery(
+                reserva.getServicio().getId(),
+                reserva.getServicio().getIdProveedor(),
+                fecha,
+                hora,
+                duracionReserva,
+                duracionServicioSegura,
+                reserva.getId()));
+
+        Instant horaAnterior = reserva.getHoraInicio();
+        Instant horaNueva = fecha.atTime(hora)
+                .atZone(TimeConfig.ZONA_BOGOTA).toInstant();
+
+        // HU-17: only the start time changes. Price, duration, owner, service
+        // and state are preserved exactly as agreed.
+        reserva.setHoraInicio(horaNueva);
+        Reserva saved = reservaRepository.save(reserva);
+
+        applicationEventPublisher.publishEvent(new ReservaReprogramadaEvent(
+                saved.getId(),
+                actorUserId,
+                saved.getIdUsuario(),
+                saved.getServicio().getIdProveedor(),
+                horaAnterior,
+                horaNueva,
+                Instant.now()));
+
+        log.info("Reserva {} reprogramada por usuario {}: {} -> {}",
+                reservationId, actorUserId, horaAnterior, horaNueva);
+
+        return toResponse(saved);
+    }
+
+    private ReservaResponse toResponse(Reserva reserva) {
+        ClientDisplayInfo client = clientLookupService
+                .findClientDisplayInfoByIds(Set.of(reserva.getIdUsuario()))
+                .get(reserva.getIdUsuario());
+
+        return ReservaMapper.toResponse(
+                reserva,
+                reserva.getServicio().getNombre(),
+                client != null ? client.nombreCompleto() : "Unknown",
+                client != null ? client.correo() : "");
     }
 
     @Override

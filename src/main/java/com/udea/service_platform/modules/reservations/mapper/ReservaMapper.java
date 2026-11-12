@@ -56,7 +56,7 @@ public final class ReservaMapper {
                 .clienteCorreo(clienteCorreo)
                 .fechaInicio(toFechaInicio(reserva))
                 .fecha(toFecha(reserva))
-                .estado(EstadoReserva.ACTIVA.getLabel())
+                .estado(EstadoReserva.fromId(reserva.getIdEstado()).getLabel())
                 .valorAcordado(reserva.getValorAcordado())
                 .duracionAcordada(reserva.getDuracionAcordada())
                 .build();
