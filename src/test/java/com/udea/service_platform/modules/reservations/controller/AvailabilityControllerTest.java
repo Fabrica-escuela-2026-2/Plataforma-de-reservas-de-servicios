@@ -2,6 +2,7 @@ package com.udea.service_platform.modules.reservations.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.udea.service_platform.modules.core.exception.GlobalExceptionHandler;
+import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.reservations.dto.AvailabilityResponse;
 import com.udea.service_platform.modules.reservations.dto.AvailabilitySlotResponse;
 import com.udea.service_platform.modules.reservations.dto.EstadoSlot;
@@ -116,6 +117,28 @@ class AvailabilityControllerTest {
                 .andExpect(jsonPath("$.fecha").value("2026-10-20"))
                 .andExpect(jsonPath("$.idServicio").value(10))
                 .andExpect(jsonPath("$.slots[0].estado").value("LIBRE"));
+    }
+
+    @Test
+    void servicioInexistente_devuelve404ConMensaje() throws Exception {
+        MockMvc mockMvc = mockMvc();
+        when(availabilityService.getAvailability(eq(99L), eq(LocalDate.of(2026, 10, 20))))
+                .thenThrow(new ResourceNotFoundException("El servicio no existe"));
+
+        mockMvc.perform(get(BASE_URL).param("serviceId", "99").param("fecha", "2026-10-20"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("El servicio no existe"));
+    }
+
+    @Test
+    void servicioInactivo_devuelve400ConMensaje() throws Exception {
+        MockMvc mockMvc = mockMvc();
+        when(availabilityService.getAvailability(eq(10L), eq(LocalDate.of(2026, 10, 20))))
+                .thenThrow(new IllegalArgumentException("El servicio no está activo"));
+
+        mockMvc.perform(get(BASE_URL).param("serviceId", "10").param("fecha", "2026-10-20"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("El servicio no está activo"));
     }
 
     private MockMvc mockMvc() {
