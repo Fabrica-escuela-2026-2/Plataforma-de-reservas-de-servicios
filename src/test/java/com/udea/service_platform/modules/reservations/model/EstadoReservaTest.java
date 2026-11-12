@@ -99,6 +99,17 @@ class EstadoReservaTest {
     }
 
     @Test
+    void isReschedulable_soloActivaYConfirmada() {
+        assertTrue(EstadoReserva.ACTIVA.isReschedulable());
+        assertTrue(EstadoReserva.CONFIRMADA.isReschedulable());
+
+        assertFalse(EstadoReserva.EN_PROCESO.isReschedulable());
+        assertFalse(EstadoReserva.CANCELADA.isReschedulable());
+        assertFalse(EstadoReserva.COMPLETADA.isReschedulable());
+        assertFalse(EstadoReserva.NO_ASISTIO.isReschedulable());
+    }
+
+    @Test
     void isTerminal_soloCanceladaCompletadaYNoAsistio() {
         assertTrue(EstadoReserva.CANCELADA.isTerminal());
         assertTrue(EstadoReserva.COMPLETADA.isTerminal());
