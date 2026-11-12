@@ -25,54 +25,54 @@ class ReservaLookupServiceTest {
 
     @Test
     void hasActiveReservations_onlyClient_returnsTrue() {
-        when(reservaRepository.existsByIdUsuarioAndIdEstado(USER_ID, EstadoReserva.ACTIVA.getId()))
+        when(reservaRepository.existsByIdUsuarioAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds()))
                 .thenReturn(true);
 
         boolean result = reservaLookupService.hasActiveReservations(USER_ID);
 
         assertTrue(result);
-        verify(reservaRepository).existsByIdUsuarioAndIdEstado(USER_ID, EstadoReserva.ACTIVA.getId());
-        verify(reservaRepository, never()).existsActiveByProviderId(any(), any());
+        verify(reservaRepository).existsByIdUsuarioAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds());
+        verify(reservaRepository, never()).existsByProviderIdAndIdEstadoIn(any(), any());
     }
 
     @Test
     void hasActiveReservations_onlyProvider_returnsTrue() {
-        when(reservaRepository.existsByIdUsuarioAndIdEstado(USER_ID, EstadoReserva.ACTIVA.getId()))
+        when(reservaRepository.existsByIdUsuarioAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds()))
                 .thenReturn(false);
-        when(reservaRepository.existsActiveByProviderId(USER_ID, EstadoReserva.ACTIVA.getId()))
+        when(reservaRepository.existsByProviderIdAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds()))
                 .thenReturn(true);
 
         boolean result = reservaLookupService.hasActiveReservations(USER_ID);
 
         assertTrue(result);
-        verify(reservaRepository).existsByIdUsuarioAndIdEstado(USER_ID, EstadoReserva.ACTIVA.getId());
-        verify(reservaRepository).existsActiveByProviderId(USER_ID, EstadoReserva.ACTIVA.getId());
+        verify(reservaRepository).existsByIdUsuarioAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds());
+        verify(reservaRepository).existsByProviderIdAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds());
     }
 
     @Test
     void hasActiveReservations_none_returnsFalse() {
-        when(reservaRepository.existsByIdUsuarioAndIdEstado(USER_ID, EstadoReserva.ACTIVA.getId()))
+        when(reservaRepository.existsByIdUsuarioAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds()))
                 .thenReturn(false);
-        when(reservaRepository.existsActiveByProviderId(USER_ID, EstadoReserva.ACTIVA.getId()))
+        when(reservaRepository.existsByProviderIdAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds()))
                 .thenReturn(false);
 
         boolean result = reservaLookupService.hasActiveReservations(USER_ID);
 
         assertFalse(result);
-        verify(reservaRepository).existsByIdUsuarioAndIdEstado(USER_ID, EstadoReserva.ACTIVA.getId());
-        verify(reservaRepository).existsActiveByProviderId(USER_ID, EstadoReserva.ACTIVA.getId());
+        verify(reservaRepository).existsByIdUsuarioAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds());
+        verify(reservaRepository).existsByProviderIdAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds());
     }
 
     @Test
     void hasActiveReservations_both_returnsTrue() {
-        when(reservaRepository.existsByIdUsuarioAndIdEstado(USER_ID, EstadoReserva.ACTIVA.getId()))
+        when(reservaRepository.existsByIdUsuarioAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds()))
                 .thenReturn(true);
 
         boolean result = reservaLookupService.hasActiveReservations(USER_ID);
 
         assertTrue(result);
-        verify(reservaRepository).existsByIdUsuarioAndIdEstado(USER_ID, EstadoReserva.ACTIVA.getId());
-        verify(reservaRepository, never()).existsActiveByProviderId(any(), any());
+        verify(reservaRepository).existsByIdUsuarioAndIdEstadoIn(USER_ID, EstadoReserva.occupyingStateIds());
+        verify(reservaRepository, never()).existsByProviderIdAndIdEstadoIn(any(), any());
     }
 
     @Test

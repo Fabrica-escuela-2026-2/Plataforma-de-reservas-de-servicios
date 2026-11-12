@@ -19,6 +19,15 @@ CREATE TABLE IF NOT EXISTS "Estados_Reserva" (
     CONSTRAINT Estados_Reserva_pkey PRIMARY KEY (id)
 );
 
+INSERT INTO "Estados_Reserva" (id, nombre) VALUES
+  (1, 'ACTIVA'),
+  (2, 'CANCELADA'),
+  (3, 'COMPLETADA'),
+  (4, 'CONFIRMADA'),
+  (5, 'EN_PROCESO'),
+  (6, 'NO_ASISTIO')
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO "Ciudades" (id_ciudad, nombre_ciudad) VALUES
   (1, 'Medellín')
 ON CONFLICT (id_ciudad) DO NOTHING;
