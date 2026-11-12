@@ -2,6 +2,7 @@ package com.udea.service_platform.modules.users.service;
 
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.reservations.service.ReservaLookupService;
+import com.udea.service_platform.modules.services.service.ServiceAdministrationService;
 import com.udea.service_platform.modules.users.dto.*;
 import com.udea.service_platform.modules.users.mapper.UserMapper;
 import com.udea.service_platform.modules.users.model.Role;
@@ -29,6 +30,7 @@ public class UserServiceImpl implements UserService {
     private final ProviderTypeRepository providerTypeRepository;
     private final PasswordEncoder passwordEncoder;
     private final ReservaLookupService reservaLookupService;
+    private final ServiceAdministrationService serviceAdministrationService;
 
     @Override
     public UserResponse register(UserRequest request) {
@@ -162,5 +164,6 @@ public class UserServiceImpl implements UserService {
 
         user.setEstadoCuenta(User.ESTADO_INACTIVA);
         userRepository.save(user);
+        serviceAdministrationService.deactivateServicesByProvider(userId);
     }
 }
