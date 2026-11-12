@@ -2,6 +2,7 @@ package com.udea.service_platform.modules.reservations.controller;
 
 import com.udea.service_platform.modules.core.security.UserDetailsImpl;
 import com.udea.service_platform.modules.reservations.dto.ReservaRequest;
+import com.udea.service_platform.modules.reservations.dto.ReservaRescheduleRequest;
 import com.udea.service_platform.modules.reservations.dto.ReservaResponse;
 import com.udea.service_platform.modules.reservations.dto.ReservaStatusUpdateRequest;
 import com.udea.service_platform.modules.reservations.service.ReservaService;
@@ -76,6 +77,31 @@ public class ReservaController {
             @Valid @RequestBody ReservaStatusUpdateRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         ReservaResponse response = reservaService.updateStatus(
+                id, request, userDetails.getIdUsuario());
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Reprogramar una reserva",
+            description = "Permite al cliente propietario o al proveedor propietario mover una "
+                    + "reserva en estado ACTIVA o CONFIRMADA a una nueva fecha y hora. La nueva "
+                    + "franja debe estar dentro del horario del servicio, no estar bloqueada y "
+                    + "no estar ocupada por otra reserva. El valor y la duración acordados se "
+                    + "conservan sin cambios.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Reserva reprogramada"),
+            @ApiResponse(responseCode = "400", description = "Fecha u hora ausente o inválida"),
+            @ApiResponse(responseCode = "403", description = "El usuario no es cliente ni proveedor propietario"),
+            @ApiResponse(responseCode = "404", description = "Reserva no encontrada"),
+            @ApiResponse(responseCode = "409", description = "Estado no reprogramable o franja no disponible")
+    })
+    @PatchMapping("/{id}/reschedule")
+    @PreAuthorize("hasAnyRole('CLIENTE', 'PROVEEDOR')")
+    public ResponseEntity<ReservaResponse> rescheduleReservation(
+            @Parameter(description = "ID de la reserva", example = "100") @PathVariable Long id,
+            @Valid @RequestBody ReservaRescheduleRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        ReservaResponse response = reservaService.rescheduleReservation(
                 id, request, userDetails.getIdUsuario());
         return ResponseEntity.ok(response);
     }
