@@ -4,11 +4,13 @@ INSERT INTO "Roles" (nombre) VALUES
   ('Administrador')
 ON CONFLICT (nombre) DO NOTHING;
 
+-- HU-15: el estado 1 (reserva vigente) se muestra como CONFIRMADA. DO UPDATE
+-- renombra la fila en bases existentes que ya la tenian como ACTIVA.
 INSERT INTO "Estados_Reserva" (id, nombre) VALUES
-  (1, 'ACTIVA'),
+  (1, 'CONFIRMADA'),
   (2, 'CANCELADA'),
   (3, 'COMPLETADA')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET nombre = EXCLUDED.nombre;
 
 -- Dias de la semana: la columna "id" no tiene default, el seed es la unica fuente de ids
 INSERT INTO "Dias_Semana" (id, nombre) VALUES

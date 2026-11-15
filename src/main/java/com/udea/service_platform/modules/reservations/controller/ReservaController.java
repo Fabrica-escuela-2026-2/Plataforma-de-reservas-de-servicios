@@ -1,5 +1,6 @@
 package com.udea.service_platform.modules.reservations.controller;
 
+import com.udea.service_platform.modules.core.exception.ForbiddenOperationException;
 import com.udea.service_platform.modules.core.security.UserDetailsImpl;
 import com.udea.service_platform.modules.reservations.dto.ReservaRequest;
 import com.udea.service_platform.modules.reservations.dto.ReservaResponse;
@@ -19,13 +20,17 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ReservaController {
 
+    private static final String ROL_CLIENTE = "CLIENTE";
+
     private final ReservaService reservaService;
 
     @PostMapping
-    @PreAuthorize("hasRole('CLIENTE')")
     public ResponseEntity<ReservaResponse> createReservation(
             @Valid @RequestBody ReservaRequest request,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        if (!ROL_CLIENTE.equals(userDetails.getRol())) {
+            throw new ForbiddenOperationException("Solo los clientes pueden agendar citas");
+        }
         ReservaResponse response = reservaService.createReservation(request, userDetails.getIdUsuario());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

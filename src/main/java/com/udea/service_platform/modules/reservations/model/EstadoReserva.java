@@ -7,12 +7,16 @@ import lombok.RequiredArgsConstructor;
  * Domain representation of the reservation states stored in the
  * {@code Reservas.estado_reserva} column.
  * Single source of truth for DB id <-> UI label mapping.
+ * <p>
+ * HU-15: a newly created reservation is "Confirmada". The constant keeps the
+ * name ACTIVA (id 1) because the rest of the code uses it as "reservation that
+ * holds its slot"; only the label shown to users changed.
  */
 @Getter
 @RequiredArgsConstructor
 public enum EstadoReserva {
 
-    ACTIVA(1, "ACTIVA"),
+    ACTIVA(1, "CONFIRMADA"),
     CANCELADA(2, "CANCELADA"),
     COMPLETADA(3, "COMPLETADA");
 
