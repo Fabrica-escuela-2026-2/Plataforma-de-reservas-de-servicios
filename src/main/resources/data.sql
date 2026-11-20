@@ -7,7 +7,10 @@ ON CONFLICT (nombre) DO NOTHING;
 INSERT INTO "Estados_Reserva" (id, nombre) VALUES
   (1, 'ACTIVA'),
   (2, 'CANCELADA'),
-  (3, 'COMPLETADA')
+  (3, 'COMPLETADA'),
+  (4, 'CONFIRMADA'),
+  (5, 'EN_PROCESO'),
+  (6, 'NO_ASISTIO')
 ON CONFLICT (id) DO NOTHING;
 
 -- Dias de la semana: la columna "id" no tiene default, el seed es la unica fuente de ids

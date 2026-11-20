@@ -105,8 +105,8 @@ class ReservaRepositoryTest {
         Service service = createService(proveedor);
         createReserva(cliente, service, EstadoReserva.ACTIVA.getId());
 
-        assertTrue(reservaRepository.existsByIdUsuarioAndIdEstado(cliente.getIdUsuario(),
-                EstadoReserva.ACTIVA.getId()));
+        assertTrue(reservaRepository.existsByIdUsuarioAndIdEstadoIn(cliente.getIdUsuario(),
+                EstadoReserva.occupyingStateIds()));
     }
 
     @Test
@@ -116,8 +116,8 @@ class ReservaRepositoryTest {
         Service service = createService(proveedor);
         createReserva(cliente, service, EstadoReserva.CANCELADA.getId());
 
-        assertFalse(reservaRepository.existsByIdUsuarioAndIdEstado(cliente.getIdUsuario(),
-                EstadoReserva.ACTIVA.getId()));
+        assertFalse(reservaRepository.existsByIdUsuarioAndIdEstadoIn(cliente.getIdUsuario(),
+                EstadoReserva.occupyingStateIds()));
     }
 
     @Test
@@ -127,8 +127,8 @@ class ReservaRepositoryTest {
         Service service = createService(proveedor);
         createReserva(cliente, service, EstadoReserva.ACTIVA.getId());
 
-        assertTrue(reservaRepository.existsActiveByProviderId(proveedor.getIdUsuario(),
-                EstadoReserva.ACTIVA.getId()));
+        assertTrue(reservaRepository.existsByProviderIdAndIdEstadoIn(proveedor.getIdUsuario(),
+                EstadoReserva.occupyingStateIds()));
     }
 
     @Test
@@ -138,7 +138,7 @@ class ReservaRepositoryTest {
         Service service = createService(proveedor);
         createReserva(cliente, service, EstadoReserva.CANCELADA.getId());
 
-        assertFalse(reservaRepository.existsActiveByProviderId(proveedor.getIdUsuario(),
-                EstadoReserva.ACTIVA.getId()));
+        assertFalse(reservaRepository.existsByProviderIdAndIdEstadoIn(proveedor.getIdUsuario(),
+                EstadoReserva.occupyingStateIds()));
     }
 }
