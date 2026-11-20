@@ -2,6 +2,7 @@ package com.udea.service_platform.modules.users.service;
 
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.reservations.service.ReservaLookupService;
+import com.udea.service_platform.modules.services.service.ServiceAdministrationService;
 import com.udea.service_platform.modules.users.model.Role;
 import com.udea.service_platform.modules.users.model.User;
 import com.udea.service_platform.modules.users.repository.ProviderTypeRepository;
@@ -34,6 +35,8 @@ class UserInactivationServiceTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private ReservaLookupService reservaLookupService;
+    @Mock
+    private ServiceAdministrationService serviceAdministrationService;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -117,5 +120,56 @@ class UserInactivationServiceTest {
         assertEquals("Usuario no encontrado", ex.getMessage());
         verify(userRepository, never()).save(any());
         verify(reservaLookupService, never()).hasActiveReservations(any());
+    }
+
+    @Test
+    void inactivateAccount_desactivaLosServiciosDelProveedor() {
+        User user = buildActiveUser();
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(reservaLookupService.hasActiveReservations(USER_ID)).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        userService.inactivateAccount(USER_ID);
+
+        verify(serviceAdministrationService).deactivateServicesByProvider(USER_ID);
+    }
+
+    @Test
+    void inactivateAccount_conReservasActivas_noLlamaALaFachada() {
+        User user = buildActiveUser();
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(reservaLookupService.hasActiveReservations(USER_ID)).thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class, () -> userService.inactivateAccount(USER_ID));
+
+        verify(serviceAdministrationService, never()).deactivateServicesByProvider(any());
+    }
+
+    @Test
+    void inactivateAccount_yaInactiva_noLlamaALaFachada() {
+        User user = User.builder()
+                .idUsuario(USER_ID)
+                .nombre("Juan")
+                .correo("juan@test.com")
+                .password("hash")
+                .estadoCuenta(User.ESTADO_INACTIVA)
+                .role(clienteRole)
+                .build();
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+
+        userService.inactivateAccount(USER_ID);
+
+        verify(serviceAdministrationService, never()).deactivateServicesByProvider(any());
+    }
+
+    private User buildActiveUser() {
+        return User.builder()
+                .idUsuario(USER_ID)
+                .nombre("Juan")
+                .correo("juan@test.com")
+                .password("hash")
+                .estadoCuenta(User.ESTADO_ACTIVA)
+                .role(clienteRole)
+                .build();
     }
 }
