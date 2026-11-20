@@ -1,6 +1,7 @@
 
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.services.model.Service;
 import com.udea.service_platform.modules.services.repository.ServiceRepository;
 import org.junit.jupiter.api.Test;
@@ -56,12 +57,12 @@ class ServiceLookupServiceImplTest {
     }
 
     @Test
-    void findActiveService_conServicioInexistente_lanzaExcepcion() {
+    void findActiveService_conServicioInexistente_lanzaResourceNotFoundException() {
         when(serviceRepository.findById(SERVICE_ID))
                 .thenReturn(Optional.empty());
 
-        IllegalArgumentException excepcion = assertThrows(
-                IllegalArgumentException.class,
+        ResourceNotFoundException excepcion = assertThrows(
+                ResourceNotFoundException.class,
                 () -> serviceLookupService.findActiveService(SERVICE_ID)
         );
 
