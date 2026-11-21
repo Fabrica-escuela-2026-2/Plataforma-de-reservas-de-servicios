@@ -1,7 +1,9 @@
 package com.udea.service_platform.modules.reservations.service;
 
+import com.udea.service_platform.modules.core.exception.ConflictException;
 import com.udea.service_platform.modules.reservations.dto.AvailabilityResponse;
 import com.udea.service_platform.modules.reservations.dto.EstadoSlot;
+import com.udea.service_platform.modules.reservations.dto.RescheduleSlotQuery;
 import com.udea.service_platform.modules.reservations.model.EstadoReserva;
 import com.udea.service_platform.modules.reservations.model.Reserva;
 import com.udea.service_platform.modules.reservations.repository.ReservaRepository;
@@ -26,6 +28,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -407,6 +410,188 @@ class AvailabilityServiceTest {
         assertEquals(fecha.plusDays(1).atStartOfDay(BOGOTA).toInstant(), fin.getValue());
         assertFalse(instante.isBefore(inicio.getValue()));
         assertTrue(instante.isBefore(fin.getValue()));
+    }
+
+    // ---------- HU-17: reschedule slot validation ----------
+
+    @Test
+    void validateRescheduleSlot_franjaLibre_noLanza() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of(franja(fecha, 9, 13)));
+        stubBlocks(fecha, List.of());
+        stubReservations(List.of());
+
+        assertDoesNotThrow(() -> availabilityService.validateRescheduleSlot(
+                query(fecha, 10, 0, 60, 60, null)));
+    }
+
+    @Test
+    void validateRescheduleSlot_enElPasado_lanzaConflicto() {
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> availabilityService.validateRescheduleSlot(
+                        query(HOY, 7, 0, 60, 60, null)));
+
+        assertEquals("La nueva fecha y hora deben ser futuras", ex.getMessage());
+    }
+
+    @Test
+    void validateRescheduleSlot_sinHorarioEseDia_lanzaConflicto() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of());
+
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> availabilityService.validateRescheduleSlot(
+                        query(fecha, 10, 0, 60, 60, null)));
+
+        assertEquals("El horario seleccionado no está dentro de la disponibilidad del servicio",
+                ex.getMessage());
+    }
+
+    @Test
+    void validateRescheduleSlot_fueraDeLaFranja_lanzaConflicto() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of(franja(fecha, 9, 11)));
+
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> availabilityService.validateRescheduleSlot(
+                        query(fecha, 11, 0, 60, 60, null)));
+
+        assertEquals("El horario seleccionado no está dentro de la disponibilidad del servicio",
+                ex.getMessage());
+    }
+
+    @Test
+    void validateRescheduleSlot_conBloqueoParcial_lanzaConflicto() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of(franja(fecha, 9, 13)));
+        stubBlocks(fecha, List.of(new BloqueoFranja(LocalTime.of(10, 0), LocalTime.of(11, 0))));
+
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> availabilityService.validateRescheduleSlot(
+                        query(fecha, 10, 0, 60, 60, null)));
+
+        assertEquals("El horario seleccionado está bloqueado por el proveedor", ex.getMessage());
+    }
+
+    @Test
+    void validateRescheduleSlot_conBloqueoDiaCompleto_lanzaConflicto() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of(franja(fecha, 9, 13)));
+        stubBlocks(fecha, List.of(new BloqueoFranja(null, null)));
+
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> availabilityService.validateRescheduleSlot(
+                        query(fecha, 10, 0, 60, 60, null)));
+
+        assertEquals("El horario seleccionado está bloqueado por el proveedor", ex.getMessage());
+    }
+
+    @Test
+    void validateRescheduleSlot_ocupadaPorOtraReserva_lanzaConflicto() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of(franja(fecha, 9, 13)));
+        stubBlocks(fecha, List.of());
+        stubReservations(List.of(reservaConId(200L, fecha, 10, 0, 60)));
+
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> availabilityService.validateRescheduleSlot(
+                        query(fecha, 10, 0, 60, 60, null)));
+
+        assertEquals("El horario seleccionado ya está ocupado", ex.getMessage());
+    }
+
+    @Test
+    void validateRescheduleSlot_excluyeLaReservaActual() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of(franja(fecha, 9, 13)));
+        stubBlocks(fecha, List.of());
+        stubReservations(List.of(reservaConId(100L, fecha, 10, 0, 60)));
+
+        assertDoesNotThrow(() -> availabilityService.validateRescheduleSlot(
+                query(fecha, 10, 0, 60, 60, 100L)));
+    }
+
+    @Test
+    void validateRescheduleSlot_reservaSinDuracionUsaLaDuracionDelServicio() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of(franja(fecha, 9, 13)));
+        stubBlocks(fecha, List.of());
+        stubReservations(List.of(reservaConId(200L, fecha, 9, 30, null)));
+
+        // La reserva existente ocupa 09:30-10:30 (duracion del servicio = 60),
+        // por lo que la nueva franja 10:00-10:30 esta ocupada.
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> availabilityService.validateRescheduleSlot(
+                        query(fecha, 10, 0, 30, 60, null)));
+
+        assertEquals("El horario seleccionado ya está ocupado", ex.getMessage());
+    }
+
+    @Test
+    void validateRescheduleSlot_franjaQueCruzaMedianoche_esValida() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of(franja(fecha, LocalTime.of(23, 0), LocalTime.of(1, 0))));
+        stubBlocks(fecha, List.of());
+        stubReservations(List.of());
+
+        assertDoesNotThrow(() -> availabilityService.validateRescheduleSlot(
+                query(fecha, 23, 30, 30, 30, null)));
+    }
+
+    @Test
+    void validateRescheduleSlot_duracionInvalida_lanzaConflicto() {
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> availabilityService.validateRescheduleSlot(
+                        query(HOY.plusDays(1), 10, 0, 0, 60, null)));
+
+        assertEquals("La reserva no tiene una duración válida", ex.getMessage());
+    }
+
+    @Test
+    void validateRescheduleSlot_consultaReservasEnUnaVentanaAmplia() {
+        LocalDate fecha = HOY.plusDays(1);
+        stubSchedules(List.of(franja(fecha, 9, 13)));
+        stubBlocks(fecha, List.of());
+        stubReservations(List.of());
+
+        availabilityService.validateRescheduleSlot(query(fecha, 10, 0, 60, 60, null));
+
+        ArgumentCaptor<Instant> inicio = ArgumentCaptor.forClass(Instant.class);
+        ArgumentCaptor<Instant> fin = ArgumentCaptor.forClass(Instant.class);
+        Mockito.verify(reservaRepository).findOccupyingReservationsInRange(
+                eq(SERVICE_ID), eq(EstadoReserva.occupyingStateIds()),
+                inicio.capture(), fin.capture());
+
+        assertEquals(fecha.minusDays(1).atStartOfDay(BOGOTA).toInstant(), inicio.getValue());
+        assertEquals(fecha.plusDays(2).atStartOfDay(BOGOTA).toInstant(), fin.getValue());
+    }
+
+    private RescheduleSlotQuery query(LocalDate fecha, int hora, int minuto,
+                                      int duracionReserva, int duracionServicio,
+                                      Long excludeReservationId) {
+        return new RescheduleSlotQuery(
+                SERVICE_ID, PROVIDER_ID, fecha, LocalTime.of(hora, minuto),
+                duracionReserva, duracionServicio, excludeReservationId);
+    }
+
+    private Reserva reservaConId(Long id, LocalDate fecha, int hora, int minuto, Integer duracion) {
+        Reserva reserva = reserva(fecha, hora, minuto, duracion);
+        reserva.setId(id);
+        return reserva;
+    }
+
+    private void stubSchedules(List<HorarioFranja> franjas) {
+        when(scheduleLookupService.findServiceSchedules(SERVICE_ID)).thenReturn(franjas);
+    }
+
+    private void stubBlocks(LocalDate fecha, List<BloqueoFranja> bloqueos) {
+        when(scheduleLookupService.findProviderBlocks(PROVIDER_ID, fecha)).thenReturn(bloqueos);
+    }
+
+    private void stubReservations(List<Reserva> reservas) {
+        when(reservaRepository.findOccupyingReservationsInRange(
+                eq(SERVICE_ID), eq(EstadoReserva.occupyingStateIds()), any(), any()))
+                .thenReturn(reservas);
     }
 
     private void stubLookup(LocalDate fecha, List<HorarioFranja> franjas, List<BloqueoFranja> bloqueos,
