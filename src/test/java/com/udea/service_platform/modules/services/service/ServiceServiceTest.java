@@ -1,6 +1,6 @@
 package com.udea.service_platform.modules.services.service;
 
-import com.udea.service_platform.modules.resources.repository.RecursoRepository;
+import com.udea.service_platform.modules.resources.service.ResourceLookupService;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.model.Service;
@@ -26,7 +26,7 @@ class ServiceServiceTest {
     private ServiceRepository serviceRepository;
 
     @Mock
-    private RecursoRepository recursoRepository;
+    private ResourceLookupService resourceLookupService;
 
     @InjectMocks
     private ServiceServiceImpl serviceService;
@@ -48,7 +48,7 @@ class ServiceServiceTest {
     @Test
     void createService_withExistingRecurso_success() {
         // Arrange
-        when(recursoRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(resourceLookupService).validateLinkable(1L, 5L);
 
         Service savedService = Service.builder()
                 .id(10L)
@@ -77,7 +77,7 @@ class ServiceServiceTest {
         assertEquals(5L, response.getIdProveedor());
         assertEquals(1L, response.getIdRecursos());
 
-        verify(recursoRepository).existsById(1L);
+        verify(resourceLookupService).validateLinkable(1L, 5L);
         verify(serviceRepository).save(any(Service.class));
     }
 
@@ -85,7 +85,8 @@ class ServiceServiceTest {
     void createService_withNonExistentRecurso_throwsIllegalArgument() {
         // Arrange
         request.setIdRecursos(999999L);
-        when(recursoRepository.existsById(999999L)).thenReturn(false);
+        doThrow(new IllegalArgumentException("El recurso seleccionado no existe"))
+                .when(resourceLookupService).validateLinkable(999999L, 5L);
 
         // Act
         IllegalArgumentException exception = assertThrows(
@@ -98,7 +99,7 @@ class ServiceServiceTest {
                 "El recurso seleccionado no existe",
                 exception.getMessage()
         );
-        verify(recursoRepository).existsById(999999L);
+        verify(resourceLookupService).validateLinkable(999999L, 5L);
         verify(serviceRepository, never()).save(any(Service.class));
     }
 
@@ -107,7 +108,7 @@ class ServiceServiceTest {
         // Arrange
         Long providerId = 8L;
 
-        when(recursoRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(resourceLookupService).validateLinkable(1L, providerId);
         when(serviceRepository.save(any(Service.class)))
                 .thenAnswer(invocation -> {
                     Service service = invocation.getArgument(0);
@@ -130,7 +131,7 @@ class ServiceServiceTest {
         assertEquals(0, request.getPrecio().compareTo(response.getPrecio()));
         assertEquals(request.getIdRecursos(), response.getIdRecursos());
 
-        verify(recursoRepository).existsById(1L);
+        verify(resourceLookupService).validateLinkable(1L, providerId);
         verify(serviceRepository).save(argThat(service ->
                 providerId.equals(service.getIdProveedor())
                         && request.getNombre().equals(service.getNombre())

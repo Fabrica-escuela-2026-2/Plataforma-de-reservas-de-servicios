@@ -1,7 +1,7 @@
 package com.udea.service_platform.modules.services.service;
 
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
-import com.udea.service_platform.modules.resources.repository.RecursoRepository;
+import com.udea.service_platform.modules.resources.service.ResourceLookupService;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.model.Service;
 import com.udea.service_platform.modules.services.repository.ServiceRepository;
@@ -30,7 +30,7 @@ class ServiceInactivationTest {
     private ServiceRepository serviceRepository;
 
     @Mock
-    private RecursoRepository recursoRepository;
+    private ResourceLookupService resourceLookupService;
 
     @InjectMocks
     private ServiceServiceImpl serviceService;

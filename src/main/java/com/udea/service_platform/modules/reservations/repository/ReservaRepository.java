@@ -48,4 +48,11 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
             + "WHERE s.idProveedor = :providerId AND r.idEstado IN :estadoIds")
     boolean existsByProviderIdAndIdEstadoIn(@Param("providerId") Long providerId,
                                             @Param("estadoIds") Collection<Integer> estadoIds);
+
+    @Query("SELECT COUNT(r)>0 FROM Reserva r JOIN r.servicio s "
+            + "WHERE s.idRecursos = :idRecurso AND r.idEstado IN :estadoIds "
+            + "AND r.horaInicio >= :desde")
+    boolean existsFutureOccupyingByRecurso(@Param("idRecurso") Long idRecurso,
+                                           @Param("estadoIds") Collection<Integer> estadoIds,
+                                           @Param("desde") Instant desde);
 }

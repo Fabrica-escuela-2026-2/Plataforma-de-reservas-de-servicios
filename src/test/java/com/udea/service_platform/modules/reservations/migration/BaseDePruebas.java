@@ -14,19 +14,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Bases aisladas dentro del PostgreSQL embebido de pruebas para la migracion
- * de hora_inicio: cada prueba crea su propia base y no toca la base
+ * Bases aisladas dentro del PostgreSQL embebido de pruebas para las migraciones
+ * de hora_inicio y recursos: cada prueba crea su propia base y no toca la base
  * "postgres" que comparten las demas pruebas @SpringBootTest.
  */
-final class BaseDePruebas {
+public final class BaseDePruebas {
 
-    static final String USER = "postgres";
-    static final String PASSWORD = "postgres";
+    public static final String USER = "postgres";
+    public static final String PASSWORD = "postgres";
 
     private BaseDePruebas() {
     }
 
-    static String crearBase(String nombre) {
+    public static String crearBase(String nombre) {
         String admin = TestEmbeddedPostgres.POSTGRES.getJdbcUrl(USER, "postgres");
         try (Connection connection = DriverManager.getConnection(admin, USER, PASSWORD);
              Statement statement = connection.createStatement()) {
@@ -40,17 +40,22 @@ final class BaseDePruebas {
 
     /** Crea "Servicios" y "Reservas" con el esquema exacto de main. */
     static void aplicarEsquemaDeMain(String url) {
-        try (InputStream in = BaseDePruebas.class.getResourceAsStream("/reservas-esquema-main.sql")) {
+        aplicarEsquemaDeMain(url, "reservas-esquema-main.sql");
+    }
+
+    /** Crea el esquema legacy indicado; lo usan las migraciones de reservas y recursos. */
+    public static void aplicarEsquemaDeMain(String url, String archivo) {
+        try (InputStream in = BaseDePruebas.class.getResourceAsStream("/" + archivo)) {
             if (in == null) {
-                throw new IllegalStateException("No se encontro reservas-esquema-main.sql");
+                throw new IllegalStateException("No se encontro " + archivo);
             }
             ejecutar(url, new String(in.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException e) {
-            throw new IllegalStateException("No se pudo leer reservas-esquema-main.sql", e);
+            throw new IllegalStateException("No se pudo leer " + archivo, e);
         }
     }
 
-    static void ejecutar(String url, String sql) {
+    public static void ejecutar(String url, String sql) {
         try (Connection connection = conectar(url); Statement statement = connection.createStatement()) {
             statement.execute(sql);
         } catch (SQLException e) {
@@ -83,7 +88,7 @@ final class BaseDePruebas {
                 + "FROM \"Reservas\" ORDER BY id_reserva");
     }
 
-    static List<String> consultar(String url, String sql) {
+    public static List<String> consultar(String url, String sql) {
         List<String> filas = new ArrayList<>();
         try (Connection connection = conectar(url); Statement statement = connection.createStatement();
              ResultSet rs = statement.executeQuery(sql)) {

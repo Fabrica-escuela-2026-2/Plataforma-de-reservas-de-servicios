@@ -1,7 +1,7 @@
 package com.udea.service_platform.modules.services.service;
 
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
-import com.udea.service_platform.modules.resources.repository.RecursoRepository;
+import com.udea.service_platform.modules.resources.service.ResourceLookupService;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.mapper.ServiceMapper;
@@ -22,13 +22,11 @@ import java.util.Objects;
 public class ServiceServiceImpl implements ServiceService {
 
     private final ServiceRepository serviceRepository;
-    private final RecursoRepository recursoRepository;
+    private final ResourceLookupService resourceLookupService;
 
     @Override
     public ServiceResponse createService(ServiceRequest request, Long idProveedor) {
-        if (!recursoRepository.existsById(request.getIdRecursos())) {
-            throw new IllegalArgumentException("El recurso seleccionado no existe");
-        }
+        resourceLookupService.validateLinkable(request.getIdRecursos(), idProveedor);
 
         Service service = ServiceMapper.toEntity(request, idProveedor);
 
@@ -71,8 +69,8 @@ public class ServiceServiceImpl implements ServiceService {
             throw new AccessDeniedException("El servicio no pertenece al proveedor");
         }
 
-        if (!recursoRepository.existsById(request.getIdRecursos())) {
-            throw new IllegalArgumentException("El recurso seleccionado no existe");
+        if (!Objects.equals(service.getIdRecursos(), request.getIdRecursos())) {
+            resourceLookupService.validateLinkable(request.getIdRecursos(), idProveedor);
         }
 
         service.setNombre(request.getNombre());

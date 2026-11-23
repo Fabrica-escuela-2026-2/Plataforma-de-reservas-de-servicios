@@ -2,7 +2,7 @@
 package com.udea.service_platform.modules.services.service;
 
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
-import com.udea.service_platform.modules.resources.repository.RecursoRepository;
+import com.udea.service_platform.modules.resources.service.ResourceLookupService;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.model.Service;
@@ -30,7 +30,7 @@ class ServiceServiceUpdateTest {
     private ServiceRepository serviceRepository;
 
     @Mock
-    private RecursoRepository recursoRepository;
+    private ResourceLookupService resourceLookupService;
 
     @InjectMocks
     private ServiceServiceImpl serviceService;
@@ -67,8 +67,7 @@ class ServiceServiceUpdateTest {
         // Arrange
         when(serviceRepository.findById(10L))
                 .thenReturn(Optional.of(existingService));
-        when(recursoRepository.existsById(2L))
-                .thenReturn(true);
+        doNothing().when(resourceLookupService).validateLinkable(2L, 5L);
         when(serviceRepository.save(any(Service.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -103,7 +102,7 @@ class ServiceServiceUpdateTest {
         ));
 
         verify(serviceRepository).findById(10L);
-        verify(recursoRepository).existsById(2L);
+        verify(resourceLookupService).validateLinkable(2L, 5L);
     }
 
     @Test
@@ -121,7 +120,7 @@ class ServiceServiceUpdateTest {
         // Assert
         assertEquals("El servicio no existe", ex.getMessage());
         verify(serviceRepository).findById(10L);
-        verify(recursoRepository, never()).existsById(any());
+        verify(resourceLookupService, never()).validateLinkable(any(), any());
         verify(serviceRepository, never()).save(any());
     }
 
@@ -143,7 +142,7 @@ class ServiceServiceUpdateTest {
                 ex.getMessage()
         );
         verify(serviceRepository).findById(10L);
-        verify(recursoRepository, never()).existsById(any());
+        verify(resourceLookupService, never()).validateLinkable(any(), any());
         verify(serviceRepository, never()).save(any());
     }
 
@@ -152,8 +151,8 @@ class ServiceServiceUpdateTest {
         // Arrange
         when(serviceRepository.findById(10L))
                 .thenReturn(Optional.of(existingService));
-        when(recursoRepository.existsById(2L))
-                .thenReturn(false);
+        doThrow(new IllegalArgumentException("El recurso seleccionado no existe"))
+                .when(resourceLookupService).validateLinkable(2L, 5L);
 
         // Act
         IllegalArgumentException ex = assertThrows(
@@ -167,7 +166,83 @@ class ServiceServiceUpdateTest {
                 ex.getMessage()
         );
         verify(serviceRepository).findById(10L);
-        verify(recursoRepository).existsById(2L);
+        verify(resourceLookupService).validateLinkable(2L, 5L);
         verify(serviceRepository, never()).save(any());
+    }
+
+    @Test
+    void updateService_mismoRecursoInactivo_noValidaYActualiza() {
+        when(serviceRepository.findById(10L))
+                .thenReturn(Optional.of(existingService));
+        when(serviceRepository.save(any(Service.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        ServiceResponse response =
+                serviceService.updateService(10L, requestConRecurso(1L), 5L);
+
+        assertEquals(1L, response.getIdRecursos());
+        assertEquals("Manicure", response.getNombre());
+        verify(resourceLookupService, never()).validateLinkable(any(), any());
+        verify(serviceRepository).save(any(Service.class));
+    }
+
+    @Test
+    void updateService_cambiaARecursoInactivo_lanza400() {
+        when(serviceRepository.findById(10L))
+                .thenReturn(Optional.of(existingService));
+        doThrow(new IllegalArgumentException("El recurso seleccionado no está activo"))
+                .when(resourceLookupService).validateLinkable(2L, 5L);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> serviceService.updateService(10L, requestConRecurso(2L), 5L)
+        );
+
+        assertEquals("El recurso seleccionado no está activo", ex.getMessage());
+        verify(resourceLookupService).validateLinkable(2L, 5L);
+        verify(serviceRepository, never()).save(any());
+    }
+
+    @Test
+    void updateService_cambiaARecursoDeOtroProveedor_lanza403() {
+        when(serviceRepository.findById(10L))
+                .thenReturn(Optional.of(existingService));
+        doThrow(new AccessDeniedException("El recurso no pertenece al proveedor"))
+                .when(resourceLookupService).validateLinkable(2L, 5L);
+
+        AccessDeniedException ex = assertThrows(
+                AccessDeniedException.class,
+                () -> serviceService.updateService(10L, requestConRecurso(2L), 5L)
+        );
+
+        assertEquals("El recurso no pertenece al proveedor", ex.getMessage());
+        verify(resourceLookupService).validateLinkable(2L, 5L);
+        verify(serviceRepository, never()).save(any());
+    }
+
+    @Test
+    void updateService_cambiaARecursoPropioActivo_actualiza() {
+        when(serviceRepository.findById(10L))
+                .thenReturn(Optional.of(existingService));
+        when(serviceRepository.save(any(Service.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        ServiceResponse response =
+                serviceService.updateService(10L, requestConRecurso(2L), 5L);
+
+        assertEquals(2L, response.getIdRecursos());
+        verify(resourceLookupService).validateLinkable(2L, 5L);
+        verify(serviceRepository).save(any(Service.class));
+    }
+
+    private static ServiceRequest requestConRecurso(long idRecursos) {
+        return ServiceRequest.builder()
+                .nombre("Manicure")
+                .descripcion("Manicure con esmaltado")
+                .categoria("Belleza")
+                .duracion(45)
+                .precio(new BigDecimal("35000.00"))
+                .idRecursos(idRecursos)
+                .build();
     }
 }
