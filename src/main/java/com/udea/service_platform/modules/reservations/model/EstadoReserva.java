@@ -56,6 +56,13 @@ public enum EstadoReserva {
     }
 
     /**
+     * HU-17: only reservations that have not started yet can be rescheduled.
+     */
+    public boolean isReschedulable() {
+        return this == ACTIVA || this == CONFIRMADA;
+    }
+
+    /**
      * Maps a database state id to its enum constant.
      * Fail-fast: unknown ids throw an explicit exception instead of
      * silently falling back to a default state.
