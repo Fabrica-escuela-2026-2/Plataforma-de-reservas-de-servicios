@@ -139,7 +139,7 @@ class MisReservasIntegrationTest {
         List<MiReservaResponse> filas = misReservasService.getMyReservationsAsClient(
                 clienteUno.getIdUsuario(), PageRequest.of(0, 10)).getContent();
 
-        assertTrue(filas.get(0).getPendiente());      // confirmada y futura
+        assertTrue(filas.get(0).getPendiente());      // activa y futura
         assertFalse(filas.get(1).getPendiente());     // cancelada
         assertFalse(filas.get(2).getPendiente());     // completada y pasada
         assertFalse(filas.get(3).getPendiente());     // fila antigua sin hora

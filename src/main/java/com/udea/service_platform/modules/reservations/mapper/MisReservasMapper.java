@@ -41,12 +41,14 @@ public final class MisReservasMapper {
     }
 
     /**
-     * Pending = active and not started yet (the current minute still counts).
-     * Cancelled and completed reservations, reservations whose start time already
-     * passed and legacy rows without start time are "past".
+     * Pending = ACTIVA or CONFIRMADA and not started yet (the current minute still
+     * counts). EN_PROCESO (already started), CANCELADA, COMPLETADA and NO_ASISTIO
+     * reservations, reservations whose start time already passed and legacy rows
+     * without start time are "past".
      */
     static boolean isPendiente(Reserva reserva, Instant ahora) {
-        return EstadoReserva.ACTIVA.getId().equals(reserva.getIdEstado())
+        return (EstadoReserva.ACTIVA.getId().equals(reserva.getIdEstado())
+                || EstadoReserva.CONFIRMADA.getId().equals(reserva.getIdEstado()))
                 && reserva.getHoraInicio() != null
                 && !reserva.getHoraInicio().isBefore(ahora.truncatedTo(ChronoUnit.MINUTES));
     }
