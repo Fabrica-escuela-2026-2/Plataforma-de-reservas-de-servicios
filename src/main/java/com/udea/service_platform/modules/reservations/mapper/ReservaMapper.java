@@ -72,14 +72,14 @@ public final class ReservaMapper {
                 .build();
     }
 
-    private static LocalTime toFechaInicio(Reserva reserva) {
+    static LocalTime toFechaInicio(Reserva reserva) {
         if (reserva.getHoraInicio() == null) {
             return null;
         }
         return reserva.getHoraInicio().atZone(TimeConfig.ZONA_BOGOTA).toLocalTime();
     }
 
-    private static LocalDate toFecha(Reserva reserva) {
+    static LocalDate toFecha(Reserva reserva) {
         if (reserva.getHoraInicio() == null) {
             return null;
         }

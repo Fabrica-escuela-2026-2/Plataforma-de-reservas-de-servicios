@@ -1,6 +1,7 @@
 
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.services.model.Service;
 import com.udea.service_platform.modules.services.repository.ServiceRepository;
 import org.junit.jupiter.api.Test;
@@ -56,12 +57,12 @@ class ServiceLookupServiceImplTest {
     }
 
     @Test
-    void findActiveService_conServicioInexistente_lanzaExcepcion() {
+    void findActiveService_conServicioInexistente_lanzaResourceNotFoundException() {
         when(serviceRepository.findById(SERVICE_ID))
                 .thenReturn(Optional.empty());
 
-        IllegalArgumentException excepcion = assertThrows(
-                IllegalArgumentException.class,
+        ResourceNotFoundException excepcion = assertThrows(
+                ResourceNotFoundException.class,
                 () -> serviceLookupService.findActiveService(SERVICE_ID)
         );
 
@@ -96,5 +97,55 @@ class ServiceLookupServiceImplTest {
 
         verify(serviceRepository).findById(SERVICE_ID);
         verifyNoMoreInteractions(serviceRepository);
+    }
+
+    @Test
+    void lockActiveService_conServicioActivo_devuelveElServicioBloqueado() {
+        Service servicio = Service.builder()
+                .id(SERVICE_ID)
+                .nombre("Consulta general")
+                .activo(true)
+                .build();
+
+        when(serviceRepository.findByIdForUpdate(SERVICE_ID))
+                .thenReturn(Optional.of(servicio));
+
+        Service resultado = serviceLookupService.lockActiveService(SERVICE_ID);
+
+        assertSame(servicio, resultado);
+        verify(serviceRepository).findByIdForUpdate(SERVICE_ID);
+        verifyNoMoreInteractions(serviceRepository);
+    }
+
+    @Test
+    void lockActiveService_conServicioInexistente_diceQueNoEstaDisponible() {
+        when(serviceRepository.findByIdForUpdate(SERVICE_ID))
+                .thenReturn(Optional.empty());
+
+        IllegalArgumentException excepcion = assertThrows(
+                IllegalArgumentException.class,
+                () -> serviceLookupService.lockActiveService(SERVICE_ID)
+        );
+
+        assertEquals("El servicio no está disponible", excepcion.getMessage());
+    }
+
+    @Test
+    void lockActiveService_conServicioInactivo_diceQueNoEstaDisponible() {
+        Service servicio = Service.builder()
+                .id(SERVICE_ID)
+                .nombre("Consulta general")
+                .activo(false)
+                .build();
+
+        when(serviceRepository.findByIdForUpdate(SERVICE_ID))
+                .thenReturn(Optional.of(servicio));
+
+        IllegalArgumentException excepcion = assertThrows(
+                IllegalArgumentException.class,
+                () -> serviceLookupService.lockActiveService(SERVICE_ID)
+        );
+
+        assertEquals("El servicio no está disponible", excepcion.getMessage());
     }
 }

@@ -1,6 +1,7 @@
 
 package com.udea.service_platform.modules.users.service;
 
+import com.udea.service_platform.modules.services.service.ServiceAdministrationService;
 import com.udea.service_platform.modules.users.dto.ClientDetailResponse;
 import com.udea.service_platform.modules.users.dto.ProfileUpdateRequest;
 import com.udea.service_platform.modules.users.dto.ProviderOnboardingRequest;
@@ -40,6 +41,9 @@ class UserServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private ServiceAdministrationService serviceAdministrationService;
 
     @InjectMocks
     private UserServiceImpl userService;

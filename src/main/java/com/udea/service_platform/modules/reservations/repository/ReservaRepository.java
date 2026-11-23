@@ -19,11 +19,11 @@ import java.util.Optional;
 public interface ReservaRepository extends JpaRepository<Reserva, Long> {
 
     @Query("SELECT r FROM Reserva r WHERE r.idUsuario = :idUsuario "
-            + "ORDER BY r.horaInicio DESC NULLS LAST")
+            + "ORDER BY r.horaInicio DESC NULLS LAST, r.id DESC")
     Page<Reserva> findByIdUsuarioOrderByFechaInicioDesc(@Param("idUsuario") Long idUsuario, Pageable pageable);
 
     @Query("SELECT r FROM Reserva r JOIN r.servicio s WHERE s.idProveedor = :providerId "
-            + "ORDER BY r.horaInicio DESC NULLS LAST")
+            + "ORDER BY r.horaInicio DESC NULLS LAST, r.id DESC")
     Page<Reserva> findByProviderIdOrderByFechaInicioDesc(@Param("providerId") Long providerId, Pageable pageable);
 
     /**
