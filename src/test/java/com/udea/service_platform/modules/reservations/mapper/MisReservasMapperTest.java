@@ -40,38 +40,60 @@ class MisReservasMapperTest {
     }
 
     @Test
+    void isPendiente_activaYFutura_esTrue() {
+        Instant ahora = bogota(2026, 10, 15, 10, 0);
+
+        assertTrue(MisReservasMapper.isPendiente(
+                reservaConEstadoYHora(EstadoReserva.ACTIVA.getId(), bogota(2026, 10, 15, 10, 30)), ahora));
+    }
+
+    @Test
     void isPendiente_confirmadaYFutura_esTrue() {
         Instant ahora = bogota(2026, 10, 15, 10, 0);
 
-        assertTrue(MisReservasMapper.isPendiente(reservaConEstadoYHora(1, bogota(2026, 10, 15, 10, 30)), ahora));
+        assertTrue(MisReservasMapper.isPendiente(
+                reservaConEstadoYHora(EstadoReserva.CONFIRMADA.getId(), bogota(2026, 10, 15, 10, 30)), ahora));
     }
 
     @Test
-    void isPendiente_confirmadaEnElMinutoActual_esTrue() {
+    void isPendiente_activaOConfirmadaEnElMinutoActual_esTrue() {
         Instant ahora = bogota(2026, 10, 15, 10, 0).plusSeconds(40);
+        Instant horaInicio = bogota(2026, 10, 15, 10, 0);
 
-        assertTrue(MisReservasMapper.isPendiente(reservaConEstadoYHora(1, bogota(2026, 10, 15, 10, 0)), ahora));
+        assertTrue(MisReservasMapper.isPendiente(
+                reservaConEstadoYHora(EstadoReserva.ACTIVA.getId(), horaInicio), ahora));
+        assertTrue(MisReservasMapper.isPendiente(
+                reservaConEstadoYHora(EstadoReserva.CONFIRMADA.getId(), horaInicio), ahora));
     }
 
     @Test
-    void isPendiente_confirmadaPeroYaPasada_esFalse() {
+    void isPendiente_activaOConfirmadaPeroYaPasada_esFalse() {
         Instant ahora = bogota(2026, 10, 15, 10, 0);
+        Instant pasada = bogota(2026, 10, 15, 9, 59);
 
-        assertFalse(MisReservasMapper.isPendiente(reservaConEstadoYHora(1, bogota(2026, 10, 15, 9, 59)), ahora));
+        assertFalse(MisReservasMapper.isPendiente(
+                reservaConEstadoYHora(EstadoReserva.ACTIVA.getId(), pasada), ahora));
+        assertFalse(MisReservasMapper.isPendiente(
+                reservaConEstadoYHora(EstadoReserva.CONFIRMADA.getId(), pasada), ahora));
     }
 
     @Test
-    void isPendiente_canceladaOCompletadaFuturas_esFalse() {
+    void isPendiente_enProcesoCanceladaCompletadaONoAsistioFuturas_esFalse() {
         Instant ahora = bogota(2026, 10, 15, 10, 0);
         Instant futura = bogota(2026, 10, 20, 10, 0);
 
-        assertFalse(MisReservasMapper.isPendiente(reservaConEstadoYHora(2, futura), ahora));
-        assertFalse(MisReservasMapper.isPendiente(reservaConEstadoYHora(3, futura), ahora));
+        assertFalse(MisReservasMapper.isPendiente(reservaConEstadoYHora(EstadoReserva.EN_PROCESO.getId(), futura), ahora));
+        assertFalse(MisReservasMapper.isPendiente(reservaConEstadoYHora(EstadoReserva.CANCELADA.getId(), futura), ahora));
+        assertFalse(MisReservasMapper.isPendiente(reservaConEstadoYHora(EstadoReserva.COMPLETADA.getId(), futura), ahora));
+        assertFalse(MisReservasMapper.isPendiente(reservaConEstadoYHora(EstadoReserva.NO_ASISTIO.getId(), futura), ahora));
     }
 
     @Test
     void isPendiente_sinHoraDeInicio_esFalse() {
-        assertFalse(MisReservasMapper.isPendiente(reservaConEstadoYHora(1, null), bogota(2026, 10, 15, 10, 0)));
+        assertFalse(MisReservasMapper.isPendiente(
+                reservaConEstadoYHora(EstadoReserva.ACTIVA.getId(), null), bogota(2026, 10, 15, 10, 0)));
+        assertFalse(MisReservasMapper.isPendiente(
+                reservaConEstadoYHora(EstadoReserva.CONFIRMADA.getId(), null), bogota(2026, 10, 15, 10, 0)));
     }
 
     @Test
