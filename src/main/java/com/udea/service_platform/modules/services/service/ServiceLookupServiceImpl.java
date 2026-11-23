@@ -39,4 +39,11 @@ public class ServiceLookupServiceImpl implements ServiceLookupService {
 
         return servicio;
     }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Service lockService(Long serviceId) {
+        return serviceRepository.findByIdForUpdate(serviceId)
+                .orElseThrow(() -> new ResourceNotFoundException("El servicio no existe"));
+    }
 }

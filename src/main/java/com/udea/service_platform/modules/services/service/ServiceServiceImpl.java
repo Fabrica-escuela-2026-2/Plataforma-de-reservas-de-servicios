@@ -1,5 +1,6 @@
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.core.exception.ConflictException;
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.resources.service.ResourceLookupService;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
@@ -21,8 +22,12 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ServiceServiceImpl implements ServiceService {
 
+    static final String MSG_AFORO_INVALIDO = "El aforo debe ser de al menos un cupo";
+    static final String MSG_SERVICIO_MODIFICADO = "El servicio fue modificado, intenta de nuevo";
+
     private final ServiceRepository serviceRepository;
     private final ResourceLookupService resourceLookupService;
+    private final AforoChangeGuard aforoChangeGuard;
 
     @Override
     public ServiceResponse createService(ServiceRequest request, Long idProveedor) {
@@ -83,5 +88,33 @@ public class ServiceServiceImpl implements ServiceService {
 
         Service savedService = serviceRepository.save(service);
         return ServiceMapper.toResponse(savedService);
+    }
+
+    @Override
+    @Transactional
+    public ServiceResponse updateAforo(Long id, Integer aforo, Long idProveedor) {
+        Service service = serviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("El servicio no existe"));
+
+        if (!Objects.equals(service.getIdProveedor(), idProveedor)) {
+            throw new AccessDeniedException("El servicio no pertenece al proveedor");
+        }
+
+        if (aforo == null || aforo < 1) {
+            throw new IllegalArgumentException(MSG_AFORO_INVALIDO);
+        }
+
+        Long idRecurso = service.getIdRecursos();
+        aforoChangeGuard.lockResource(idRecurso);
+
+        Service bloqueado = serviceRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("El servicio no existe"));
+        if (!Objects.equals(idRecurso, bloqueado.getIdRecursos())) {
+            throw new ConflictException(MSG_SERVICIO_MODIFICADO);
+        }
+
+        aforoChangeGuard.validatePeak(id, bloqueado.getDuracion(), aforo);
+        bloqueado.setAforo(aforo);
+        return ServiceMapper.toResponse(serviceRepository.save(bloqueado));
     }
 }

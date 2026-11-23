@@ -55,4 +55,29 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     boolean existsFutureOccupyingByRecurso(@Param("idRecurso") Long idRecurso,
                                            @Param("estadoIds") Collection<Integer> estadoIds,
                                            @Param("desde") Instant desde);
+
+    /**
+     * HU-20: reservas de otros servicios que usan el mismo recurso y cuyo
+     * intervalo [inicio, fin) se cruza con la ventana consultada. El fin se
+     * calcula en SQL con la duracion acordada o, si no hay, la del servicio.
+     */
+    @Query(value = "SELECT r.* FROM \"Reservas\" r "
+            + "JOIN \"Servicios\" s ON s.id_servicio = r.servicio_reserva "
+            + "WHERE s.id_recursos = :idRecurso AND s.id_servicio <> :serviceId "
+            + "AND r.estado_reserva IN (:estadoIds) "
+            + "AND r.hora_inicio < :fin "
+            + "AND r.hora_inicio + COALESCE(r.duracion_acordada, s.duracion) * INTERVAL '1 minute' > :inicio",
+            nativeQuery = true)
+    List<Reserva> findOccupyingReservationsByRecursoInRange(
+            @Param("idRecurso") Long idRecurso,
+            @Param("serviceId") Long serviceId,
+            @Param("estadoIds") Collection<Integer> estadoIds,
+            @Param("inicio") Instant inicio,
+            @Param("fin") Instant fin);
+
+    @Query("SELECT r FROM Reserva r WHERE r.servicio.id = :serviceId "
+            + "AND r.idEstado IN :estadoIds AND r.horaInicio >= :desde")
+    List<Reserva> findFutureOccupyingReservations(@Param("serviceId") Long serviceId,
+                                                  @Param("estadoIds") Collection<Integer> estadoIds,
+                                                  @Param("desde") Instant desde);
 }

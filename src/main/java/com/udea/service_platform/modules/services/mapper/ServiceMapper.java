@@ -35,6 +35,7 @@ public final class ServiceMapper {
                 .precio(service.getPrecio())
                 .idProveedor(service.getIdProveedor())
                 .idRecursos(service.getIdRecursos())
+                .aforo(service.getAforo())
                 .activo(service.getActivo())
                 .build();
     }

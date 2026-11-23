@@ -23,4 +23,10 @@ public class AvailabilitySlotResponse {
     private LocalTime horaFin;
 
     private EstadoSlot estado;
+
+    private Integer cuposTotales;
+
+    private Integer cuposDisponibles;
+
+    private String mensaje;
 }

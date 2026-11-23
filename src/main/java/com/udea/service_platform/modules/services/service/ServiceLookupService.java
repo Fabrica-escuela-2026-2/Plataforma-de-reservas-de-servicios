@@ -23,4 +23,11 @@ public interface ServiceLookupService {
      * when the service does not exist or is inactive.
      */
     Service lockActiveService(Long serviceId);
+
+    /**
+     * Takes the same row lock without requiring the service to be active. Used
+     * by flows over an existing reservation (HU-17), whose service may have
+     * been deactivated after the booking. Requires an active transaction.
+     */
+    Service lockService(Long serviceId);
 }

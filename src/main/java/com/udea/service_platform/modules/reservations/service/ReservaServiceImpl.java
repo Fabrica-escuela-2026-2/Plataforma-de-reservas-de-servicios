@@ -3,11 +3,8 @@ package com.udea.service_platform.modules.reservations.service;
 import com.udea.service_platform.modules.core.config.TimeConfig;
 import com.udea.service_platform.modules.core.exception.ConflictException;
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
-import com.udea.service_platform.modules.core.exception.ConflictException;
 import com.udea.service_platform.modules.notifications.model.TipoNotificacion;
 import com.udea.service_platform.modules.notifications.service.NotificationService;
-import com.udea.service_platform.modules.reservations.dto.AvailabilitySlotResponse;
-import com.udea.service_platform.modules.reservations.dto.EstadoSlot;
 import com.udea.service_platform.modules.reservations.dto.ReservaRequest;
 import com.udea.service_platform.modules.reservations.dto.ReservaRescheduleRequest;
 import com.udea.service_platform.modules.reservations.dto.ReservaResponse;
@@ -50,9 +47,8 @@ import java.util.stream.Collectors;
 public class ReservaServiceImpl implements ReservaService {
 
     static final String MSG_HORARIO_NO_RESERVABLE = "Ese horario no se puede reservar";
-    static final String MSG_HORARIO_NO_DISPONIBLE =
-            "El horario ya no está disponible. Por favor elige otro horario.";
     static final String MSG_SERVICIO_NO_DISPONIBLE = "El servicio no está disponible";
+    static final String MSG_SERVICIO_MODIFICADO = "El servicio fue modificado, intenta de nuevo";
 
     private final ReservaRepository reservaRepository;
     private final ServiceLookupService serviceLookupService;
@@ -63,6 +59,8 @@ public class ReservaServiceImpl implements ReservaService {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final AccountLookupService accountLookupService;
     private final AvailabilityService availabilityService;
+    private final ReservationResourceLock resourceLock;
+    private final ReservationSlotPolicy slotPolicy;
     private final NotificationService notificationService;
     private final Clock clock;
 
@@ -83,8 +81,16 @@ public class ReservaServiceImpl implements ReservaService {
             throw new IllegalArgumentException(MSG_HORARIO_NO_RESERVABLE);
         }
 
+        com.udea.service_platform.modules.services.model.Service servicioInicial =
+                findServiceForBooking(request.getIdServicio());
+        Long idRecurso = servicioInicial.getIdRecursos();
+
+        resourceLock.lockResource(idRecurso);
+
         com.udea.service_platform.modules.services.model.Service servicio =
                 serviceLookupService.lockActiveService(request.getIdServicio());
+        assertRecursoNoCambio(idRecurso, servicio);
+        Integer aforo = servicio.getAforo();
 
         if (!accountLookupService.isAccountActive(servicio.getIdProveedor())) {
             throw new IllegalArgumentException(MSG_SERVICIO_NO_DISPONIBLE);
@@ -94,7 +100,7 @@ public class ReservaServiceImpl implements ReservaService {
             throw new IllegalArgumentException("No puedes reservar tu propio servicio");
         }
 
-        assertSlotBookable(servicio.getId(), fecha, hora);
+        assertSlotBookable(servicio, aforo, fecha, hora);
 
         ClientDisplayInfo client = clientLookupService.findClientDisplayInfo(clientUserId);
 
@@ -126,25 +132,39 @@ public class ReservaServiceImpl implements ReservaService {
         }
     }
 
-    /**
-     * The slot must be one of the slots the availability endpoint offers and
-     * must be free. Reusing the availability calculation guarantees that what
-     * the client saw as "libre" is exactly what can be booked: it already
-     * applies the provider's weekly schedule, the provider's blocks, the
-     * active reservations and the "not in the past" rule.
-     */
-    private void assertSlotBookable(Long serviceId, LocalDate fecha, LocalTime hora) {
-        EstadoSlot estado = availabilityService.getAvailability(serviceId, fecha).getSlots().stream()
-                .filter(slot -> hora.equals(slot.getHoraInicio()))
-                .map(AvailabilitySlotResponse::getEstado)
-                .findFirst()
-                .orElse(null);
-
-        if (estado == null || estado == EstadoSlot.BLOQUEADA) {
-            throw new IllegalArgumentException(MSG_HORARIO_NO_RESERVABLE);
+    private com.udea.service_platform.modules.services.model.Service findServiceForBooking(Long serviceId) {
+        try {
+            return serviceLookupService.findActiveService(serviceId);
+        } catch (ResourceNotFoundException | IllegalArgumentException ex) {
+            throw new IllegalArgumentException(MSG_SERVICIO_NO_DISPONIBLE);
         }
-        if (estado == EstadoSlot.OCUPADA) {
-            throw new ConflictException(MSG_HORARIO_NO_DISPONIBLE);
+    }
+
+    private void assertRecursoNoCambio(Long idRecursoPrevio,
+                                       com.udea.service_platform.modules.services.model.Service servicio) {
+        if (!Objects.equals(idRecursoPrevio, servicio.getIdRecursos())) {
+            throw new ConflictException(MSG_SERVICIO_MODIFICADO);
+        }
+    }
+
+    private void assertSlotBookable(com.udea.service_platform.modules.services.model.Service servicio,
+                                    Integer aforo, LocalDate fecha, LocalTime hora) {
+        int duracionServicio = servicio.getDuracion() == null ? 0 : servicio.getDuracion();
+        SlotContext context = slotPolicy.loadForMutation(
+                servicio.getId(),
+                servicio.getIdRecursos(),
+                aforo,
+                servicio.getIdProveedor(),
+                fecha,
+                duracionServicio,
+                null);
+        SlotDecision decision = slotPolicy.evaluate(context, hora, duracionServicio);
+
+        switch (decision.reason()) {
+            case OUT_OF_SCHEDULE, PROVIDER_BLOCK -> throw new IllegalArgumentException(MSG_HORARIO_NO_RESERVABLE);
+            case RESOURCE_BUSY, CAPACITY_FULL -> throw new ConflictException(decision.mensaje());
+            default -> {
+            }
         }
     }
 
@@ -229,6 +249,20 @@ public class ReservaServiceImpl implements ReservaService {
     public ReservaResponse rescheduleReservation(Long reservationId,
                                                  ReservaRescheduleRequest request,
                                                  Long actorUserId) {
+        Reserva reservaInicial = reservaRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("La reserva no existe"));
+        if (reservaInicial.getServicio() == null) {
+            throw new ResourceNotFoundException("La reserva no existe");
+        }
+        Long serviceId = reservaInicial.getServicio().getId();
+        Long idRecurso = reservaInicial.getServicio().getIdRecursos();
+
+        resourceLock.lockResource(idRecurso);
+
+        com.udea.service_platform.modules.services.model.Service servicio =
+                serviceLookupService.lockService(serviceId);
+        assertRecursoNoCambio(idRecurso, servicio);
+
         Reserva reserva = reservaRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("La reserva no existe"));
 
@@ -238,8 +272,7 @@ public class ReservaServiceImpl implements ReservaService {
         LocalDate fecha = reschedulePolicy.parseFecha(request.getFecha());
         LocalTime hora = reschedulePolicy.parseHora(request.getFechaInicio());
 
-        Integer duracionServicio = reserva.getServicio().getDuracion();
-        int duracionServicioSegura = duracionServicio != null ? duracionServicio : 0;
+        int duracionServicioSegura = servicio.getDuracion() == null ? 0 : servicio.getDuracion();
         int duracionReserva = reserva.getDuracionAcordada() != null
                 ? reserva.getDuracionAcordada()
                 : duracionServicioSegura;
@@ -249,13 +282,15 @@ public class ReservaServiceImpl implements ReservaService {
         }
 
         availabilityService.validateRescheduleSlot(new RescheduleSlotQuery(
-                reserva.getServicio().getId(),
-                reserva.getServicio().getIdProveedor(),
+                serviceId,
+                servicio.getIdProveedor(),
                 fecha,
                 hora,
                 duracionReserva,
                 duracionServicioSegura,
-                reserva.getId()));
+                reserva.getId(),
+                servicio.getIdRecursos(),
+                servicio.getAforo()));
 
         Instant horaAnterior = reserva.getHoraInicio();
         Instant horaNueva = fecha.atTime(hora)

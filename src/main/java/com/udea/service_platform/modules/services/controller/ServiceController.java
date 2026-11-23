@@ -1,6 +1,7 @@
 package com.udea.service_platform.modules.services.controller;
 
 import com.udea.service_platform.modules.core.security.UserDetailsImpl;
+import com.udea.service_platform.modules.services.dto.AforoRequest;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.service.ServiceService;
@@ -48,6 +49,17 @@ public class ServiceController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         ServiceResponse response = serviceService.inactivateService(id, userDetails.getIdUsuario());
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/aforo")
+    @PreAuthorize("hasRole('PROVEEDOR')")
+    public ResponseEntity<ServiceResponse> updateAforo(
+            @PathVariable Long id,
+            @RequestBody AforoRequest request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        ServiceResponse response = serviceService.updateAforo(
+                id, request.getAforo(), userDetails.getIdUsuario());
         return ResponseEntity.ok(response);
     }
 
