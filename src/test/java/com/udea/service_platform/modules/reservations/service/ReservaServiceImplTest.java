@@ -74,6 +74,9 @@ class ReservaServiceImplTest {
     private ReservaStatusTransitionPolicy statusTransitionPolicy;
 
     @Mock
+    private ReservaReschedulePolicy reschedulePolicy;
+
+    @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
@@ -95,7 +98,7 @@ class ReservaServiceImplTest {
     private ReservaServiceImpl crearServicio(Instant ahora) {
         Clock clock = Clock.fixed(ahora, TimeConfig.ZONA_BOGOTA);
         return new ReservaServiceImpl(reservaRepository, serviceLookupService, clientLookupService,
-                cancellationPolicy, statusTransitionPolicy, applicationEventPublisher, accountLookupService,
+                cancellationPolicy, statusTransitionPolicy, reschedulePolicy, applicationEventPublisher, accountLookupService,
                 availabilityService, notificationService, clock);
     }
 

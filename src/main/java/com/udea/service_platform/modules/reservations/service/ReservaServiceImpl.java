@@ -60,7 +60,6 @@ public class ReservaServiceImpl implements ReservaService {
     private final ReservaCancellationPolicy cancellationPolicy;
     private final ReservaStatusTransitionPolicy statusTransitionPolicy;
     private final ReservaReschedulePolicy reschedulePolicy;
-    private final AvailabilityService availabilityService;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final AccountLookupService accountLookupService;
     private final AvailabilityService availabilityService;

@@ -5,5 +5,6 @@ package com.udea.service_platform.modules.notifications.model;
  */
 public enum TipoNotificacion {
     RESERVA_CONFIRMADA,
-    NUEVA_RESERVA
+    NUEVA_RESERVA,
+    RESERVA_REPROGRAMADA
 }
