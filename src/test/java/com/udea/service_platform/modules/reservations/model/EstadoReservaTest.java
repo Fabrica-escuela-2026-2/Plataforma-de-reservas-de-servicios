@@ -38,6 +38,38 @@ class EstadoReservaTest {
     }
 
     @Test
+    void fromLabel_mapeaTodosLosEstados() {
+        assertEquals(EstadoReserva.ACTIVA, EstadoReserva.fromLabel("ACTIVA"));
+        assertEquals(EstadoReserva.CANCELADA, EstadoReserva.fromLabel("CANCELADA"));
+        assertEquals(EstadoReserva.COMPLETADA, EstadoReserva.fromLabel("COMPLETADA"));
+        assertEquals(EstadoReserva.CONFIRMADA, EstadoReserva.fromLabel("CONFIRMADA"));
+        assertEquals(EstadoReserva.EN_PROCESO, EstadoReserva.fromLabel("EN_PROCESO"));
+        assertEquals(EstadoReserva.NO_ASISTIO, EstadoReserva.fromLabel("NO_ASISTIO"));
+    }
+
+    @Test
+    void fromLabel_ignoraMayusculasYEspacios() {
+        assertEquals(EstadoReserva.CONFIRMADA, EstadoReserva.fromLabel("  confirmada "));
+        assertEquals(EstadoReserva.EN_PROCESO, EstadoReserva.fromLabel("en_proceso"));
+    }
+
+    @Test
+    void fromLabel_desconocidoLanzaExcepcion() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> EstadoReserva.fromLabel("PAUSADA"));
+
+        assertEquals("Estado de reserva desconocido: PAUSADA", ex.getMessage());
+    }
+
+    @Test
+    void fromLabel_nullLanzaExcepcion() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> EstadoReserva.fromLabel(null));
+
+        assertEquals("Estado de reserva desconocido: null", ex.getMessage());
+    }
+
+    @Test
     void occupyingStateIds_contieneSoloEstadosQueBloqueanAgenda() {
         assertEquals(
                 List.of(1, 4, 5),
