@@ -1,5 +1,7 @@
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.categories.service.CategoriaInfo;
+import com.udea.service_platform.modules.categories.service.CategoriaLookupService;
 import com.udea.service_platform.modules.core.exception.ConflictException;
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.resources.service.ResourceLookupService;
@@ -28,12 +30,15 @@ public class ServiceServiceImpl implements ServiceService {
     private final ServiceRepository serviceRepository;
     private final ResourceLookupService resourceLookupService;
     private final AforoChangeGuard aforoChangeGuard;
+    private final CategoriaLookupService categoriaLookupService;
 
     @Override
+    @Transactional
     public ServiceResponse createService(ServiceRequest request, Long idProveedor) {
         resourceLookupService.validateLinkable(request.getIdRecursos(), idProveedor);
 
-        Service service = ServiceMapper.toEntity(request, idProveedor);
+        CategoriaInfo categoria = categoriaLookupService.resolveOrCreate(request.getCategoria());
+        Service service = ServiceMapper.toEntity(request, idProveedor, categoria);
 
         Service savedService = serviceRepository.save(service);
 
@@ -41,6 +46,7 @@ public class ServiceServiceImpl implements ServiceService {
     }
 
     @Override
+    @Transactional
     public ServiceResponse inactivateService(Long serviceId, Long idProveedor) {
         Service service = serviceRepository.findById(serviceId)
                 .orElseThrow(() -> new ResourceNotFoundException("El servicio no existe"));
@@ -58,6 +64,7 @@ public class ServiceServiceImpl implements ServiceService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ServiceResponse> getPublicCatalog(Long providerId, String category, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
         var spec = ServiceSpecification.buildFilter(providerId, category, minPrice, maxPrice);
         return serviceRepository.findAll(spec, pageable)
@@ -79,8 +86,9 @@ public class ServiceServiceImpl implements ServiceService {
         }
 
         service.setNombre(request.getNombre());
-        service.setDescripcion(request.getDescripcion());
-        service.setCategoria(request.getCategoria());
+        service.setDescripcion(request.getDescripcion() == null ? "" : request.getDescripcion());
+        CategoriaInfo categoria = categoriaLookupService.resolveOrCreate(request.getCategoria());
+        service.setCategoria(ServiceMapper.toCategoria(categoria));
         service.setDuracion(request.getDuracion());
         service.setPrecio(request.getPrecio());
         service.setIdRecursos(request.getIdRecursos());

@@ -239,7 +239,6 @@ class ReservaAforoConcurrenciaIntegrationTest {
         return serviceRepository.save(Service.builder()
                 .nombre(nombre)
                 .descripcion("desc")
-                .categoria("Belleza")
                 .duracion(60)
                 .precio(new BigDecimal("25000.00"))
                 .idProveedor(proveedor.getIdUsuario())

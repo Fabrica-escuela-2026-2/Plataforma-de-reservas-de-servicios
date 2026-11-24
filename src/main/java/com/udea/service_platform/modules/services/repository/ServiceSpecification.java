@@ -1,6 +1,9 @@
 package com.udea.service_platform.modules.services.repository;
 
+import com.udea.service_platform.modules.categories.model.Categoria;
 import com.udea.service_platform.modules.services.model.Service;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -21,7 +24,11 @@ public class ServiceSpecification {
             }
 
             if (category != null && !category.isBlank()) {
-                predicates.add(cb.equal(cb.lower(root.get("categoria")), category.toLowerCase()));
+                Join<Service, Categoria> categoriaJoin =
+                        root.join("categoria", JoinType.LEFT);
+                predicates.add(cb.equal(
+                        cb.lower(categoriaJoin.<String>get("nombre")),
+                        category.toLowerCase()));
             }
 
             if (minPrice != null) {

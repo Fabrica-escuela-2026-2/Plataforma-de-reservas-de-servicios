@@ -1,5 +1,6 @@
 package com.udea.service_platform.modules.services.model;
 
+import com.udea.service_platform.modules.categories.model.Categoria;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,8 +26,9 @@ public class Service {
     @Column(name = "descripcion")
     private String descripcion;
 
-    @Column(name = "categoria", nullable = false)
-    private String categoria;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "categoria_servicios", referencedColumnName = "id_categoria")
+    private Categoria categoria;
 
     @Column(name = "duracion", nullable = false)
     private Integer duracion;

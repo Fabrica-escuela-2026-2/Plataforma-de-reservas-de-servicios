@@ -76,7 +76,6 @@ class ReservaRepositoryTest {
         Service service = Service.builder()
                 .nombre("Serv")
                 .descripcion("desc")
-                .categoria("Cat")
                 .duracion(30)
                 .precio(new BigDecimal("10.00"))
                 .idProveedor(proveedor.getIdUsuario())

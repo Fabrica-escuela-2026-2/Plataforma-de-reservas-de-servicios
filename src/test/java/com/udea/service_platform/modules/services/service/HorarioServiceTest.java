@@ -63,7 +63,6 @@ class HorarioServiceTest {
         service = Service.builder()
                 .id(SERVICE_ID)
                 .nombre("Corte de cabello")
-                .categoria("Belleza")
                 .duracion(30)
                 .precio(new BigDecimal("25.00"))
                 .idProveedor(OWNER_ID)

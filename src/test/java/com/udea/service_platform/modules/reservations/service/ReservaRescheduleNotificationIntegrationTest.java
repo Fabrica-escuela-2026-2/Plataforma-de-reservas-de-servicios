@@ -97,7 +97,6 @@ class ReservaRescheduleNotificationIntegrationTest {
         servicio = serviceRepository.save(Service.builder()
                 .nombre("Corte HU17")
                 .descripcion("desc")
-                .categoria("Cat")
                 .duracion(30)
                 .precio(new BigDecimal("25000.00"))
                 .idProveedor(proveedor.getIdUsuario())

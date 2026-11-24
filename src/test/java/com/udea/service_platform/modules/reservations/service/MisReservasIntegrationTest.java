@@ -231,7 +231,6 @@ class MisReservasIntegrationTest {
         return serviceRepository.save(Service.builder()
                 .nombre(nombre)
                 .descripcion("desc")
-                .categoria("Cat")
                 .duracion(30)
                 .precio(new BigDecimal("10.00"))
                 .idProveedor(proveedor.getIdUsuario())
