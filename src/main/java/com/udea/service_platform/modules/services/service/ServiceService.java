@@ -22,4 +22,6 @@ public interface ServiceService {
                                            Pageable pageable);
 
     ServiceResponse updateService(Long id, ServiceRequest request, Long idProveedor);
+
+    ServiceResponse updateAforo(Long id, Integer aforo, Long idProveedor);
 }

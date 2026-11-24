@@ -171,7 +171,7 @@ class ReservaCreacionIntegrationTest {
         ConflictException ex = assertThrows(ConflictException.class,
                 () -> reservaService.createReservation(request("08:00"), clienteDos.getIdUsuario()));
 
-        assertEquals("El horario ya no está disponible. Por favor elige otro horario.", ex.getMessage());
+        assertEquals("No hay cupos disponibles", ex.getMessage());
         assertEquals(1, contarReservas());
         assertEquals(0, contarNotificaciones(clienteDos.getIdUsuario(), "RESERVA_CONFIRMADA"));
     }
@@ -198,7 +198,7 @@ class ReservaCreacionIntegrationTest {
             assertEquals(1, exitosas.size());
             assertEquals(1, fallos.size());
             assertInstanceOf(ConflictException.class, fallos.get(0));
-            assertEquals("El horario ya no está disponible. Por favor elige otro horario.",
+            assertEquals("No hay cupos disponibles",
                     fallos.get(0).getMessage());
             assertEquals(1, contarReservas());
             // solo la reserva ganadora genera avisos: uno para su cliente y uno para el proveedor

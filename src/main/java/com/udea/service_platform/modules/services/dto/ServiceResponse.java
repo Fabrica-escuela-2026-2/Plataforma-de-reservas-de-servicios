@@ -19,5 +19,6 @@ public class ServiceResponse {
     private BigDecimal precio;
     private Long idProveedor;
     private Long idRecursos;
+    private Integer aforo;
     private Boolean activo;
 }

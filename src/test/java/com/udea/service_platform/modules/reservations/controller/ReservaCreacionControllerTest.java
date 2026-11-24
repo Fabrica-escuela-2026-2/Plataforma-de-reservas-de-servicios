@@ -158,14 +158,14 @@ class ReservaCreacionControllerTest {
     @Test
     void createReservation_whenSlotWasTaken_returns409() throws Exception {
         when(reservaService.createReservation(any(ReservaRequest.class), eq(2L)))
-                .thenThrow(new ConflictException("El horario ya no está disponible. Por favor elige otro horario."));
+                .thenThrow(new ConflictException("No hay cupos disponibles"));
 
         mockMvc.perform(post("/api/reservations")
                         .with(user(cliente()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest())))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("El horario ya no está disponible. Por favor elige otro horario."));
+                .andExpect(jsonPath("$.error").value("No hay cupos disponibles"));
     }
 
     @Test

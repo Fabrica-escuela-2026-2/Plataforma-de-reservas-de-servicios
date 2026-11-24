@@ -77,6 +77,9 @@ class ReservaServiceImplRescheduleTest {
     private AvailabilityService availabilityService;
 
     @Mock
+    private ReservationResourceLock resourceLock;
+
+    @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
@@ -125,8 +128,10 @@ class ReservaServiceImplRescheduleTest {
         assertEquals(HORA_NUEVA_UTC, event.horaNueva());
         assertNotNull(event.timestamp());
 
+        verify(reservaRepository).findById(RESERVA_ID);
         verify(reservaRepository).findByIdForUpdate(RESERVA_ID);
-        verify(reservaRepository, never()).findById(any());
+        verify(resourceLock).lockResource(null);
+        verify(serviceLookupService).lockService(SERVICE_ID);
     }
 
     @Test
@@ -145,7 +150,7 @@ class ReservaServiceImplRescheduleTest {
     void reprogramarReserva_sinDuracionValida_lanzaConflictYNoValidaFranja() {
         Reserva reserva = reserva(EstadoReserva.ACTIVA, null);
         reserva.getServicio().setDuracion(null);
-        when(reservaRepository.findByIdForUpdate(RESERVA_ID)).thenReturn(Optional.of(reserva));
+        stubReservaYLocks(reserva);
         when(reschedulePolicy.parseFecha("2026-10-21")).thenReturn(FECHA_NUEVA);
         when(reschedulePolicy.parseHora("10:00")).thenReturn(HORA_NUEVA);
 
@@ -160,20 +165,21 @@ class ReservaServiceImplRescheduleTest {
 
     @Test
     void reprogramarReserva_inexistente_lanzaResourceNotFound() {
-        when(reservaRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
+        when(reservaRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
                 () -> reservaService.rescheduleReservation(
                         999L, request("2026-10-21", "10:00"), CLIENT_ID));
 
-        verifyNoInteractions(reschedulePolicy, availabilityService, applicationEventPublisher);
+        verifyNoInteractions(resourceLock, serviceLookupService, reschedulePolicy,
+                availabilityService, applicationEventPublisher);
         verify(reservaRepository, never()).save(any());
     }
 
     @Test
     void reprogramarReserva_conUsuarioAjeno_lanzaAccessDenied() {
         Reserva reserva = reserva(EstadoReserva.ACTIVA, 45);
-        when(reservaRepository.findByIdForUpdate(RESERVA_ID)).thenReturn(Optional.of(reserva));
+        stubReservaYLocks(reserva);
         doThrow(new AccessDeniedException("No tienes permiso para reprogramar esta reserva"))
                 .when(reschedulePolicy).validateActor(reserva, 99L);
 
@@ -188,7 +194,7 @@ class ReservaServiceImplRescheduleTest {
     @Test
     void reprogramarReserva_enEstadoNoReprogramable_lanzaConflict() {
         Reserva reserva = reserva(EstadoReserva.EN_PROCESO, 45);
-        when(reservaRepository.findByIdForUpdate(RESERVA_ID)).thenReturn(Optional.of(reserva));
+        stubReservaYLocks(reserva);
         doThrow(new ConflictException("La reserva no se puede reprogramar en estado EN_PROCESO"))
                 .when(reschedulePolicy).validateState(reserva);
 
@@ -203,10 +209,10 @@ class ReservaServiceImplRescheduleTest {
     @Test
     void reprogramarReserva_conFranjaNoDisponible_lanzaConflictYNoGuarda() {
         Reserva reserva = reserva(EstadoReserva.ACTIVA, 45);
-        when(reservaRepository.findByIdForUpdate(RESERVA_ID)).thenReturn(Optional.of(reserva));
+        stubReservaYLocks(reserva);
         when(reschedulePolicy.parseFecha("2026-10-21")).thenReturn(FECHA_NUEVA);
         when(reschedulePolicy.parseHora("10:00")).thenReturn(HORA_NUEVA);
-        doThrow(new ConflictException("El horario seleccionado ya está ocupado"))
+        doThrow(new ConflictException(ReservationSlotPolicy.MSG_SIN_CUPOS))
                 .when(availabilityService).validateRescheduleSlot(any(RescheduleSlotQuery.class));
 
         assertThrows(ConflictException.class,
@@ -220,7 +226,7 @@ class ReservaServiceImplRescheduleTest {
     @Test
     void reprogramarReserva_conFechaInvalida_lanzaIllegalArgumentYNoValidaFranja() {
         Reserva reserva = reserva(EstadoReserva.ACTIVA, 45);
-        when(reservaRepository.findByIdForUpdate(RESERVA_ID)).thenReturn(Optional.of(reserva));
+        stubReservaYLocks(reserva);
         when(reschedulePolicy.parseFecha("20/10/2026"))
                 .thenThrow(new IllegalArgumentException(
                         "Formato de fecha inválido. Use yyyy-MM-dd (ej. 2026-10-20)"));
@@ -236,7 +242,7 @@ class ReservaServiceImplRescheduleTest {
     @Test
     void reprogramarReserva_conHoraInvalida_lanzaIllegalArgumentYNoValidaFranja() {
         Reserva reserva = reserva(EstadoReserva.ACTIVA, 45);
-        when(reservaRepository.findByIdForUpdate(RESERVA_ID)).thenReturn(Optional.of(reserva));
+        stubReservaYLocks(reserva);
         when(reschedulePolicy.parseFecha("2026-10-21")).thenReturn(FECHA_NUEVA);
         when(reschedulePolicy.parseHora("25:99"))
                 .thenThrow(new IllegalArgumentException(
@@ -267,8 +273,14 @@ class ReservaServiceImplRescheduleTest {
         assertEquals(HORA_NUEVA_UTC, eventCaptor.getValue().horaNueva());
     }
 
-    private void stubExito(Reserva reserva) {
+    private void stubReservaYLocks(Reserva reserva) {
+        when(reservaRepository.findById(RESERVA_ID)).thenReturn(Optional.of(reserva));
+        when(serviceLookupService.lockService(SERVICE_ID)).thenReturn(reserva.getServicio());
         when(reservaRepository.findByIdForUpdate(RESERVA_ID)).thenReturn(Optional.of(reserva));
+    }
+
+    private void stubExito(Reserva reserva) {
+        stubReservaYLocks(reserva);
         when(reschedulePolicy.parseFecha("2026-10-21")).thenReturn(FECHA_NUEVA);
         when(reschedulePolicy.parseHora("10:00")).thenReturn(HORA_NUEVA);
         when(reservaRepository.save(reserva)).thenReturn(reserva);

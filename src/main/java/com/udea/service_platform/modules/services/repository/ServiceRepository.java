@@ -10,6 +10,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
+
 import java.util.Optional;
 
 @Repository
@@ -18,6 +21,8 @@ public interface ServiceRepository extends JpaRepository<Service, Long>, JpaSpec
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Service s SET s.activo = false WHERE s.idProveedor = :idProveedor AND s.activo = true")
     int deactivateServicesByProvider(@Param("idProveedor") Long idProveedor);
+
+    List<Service> findByIdRecursosIn(Collection<Long> idsRecursos);
 
     /**
      * Loads a service taking a pessimistic write lock on its row (SELECT ... FOR UPDATE).

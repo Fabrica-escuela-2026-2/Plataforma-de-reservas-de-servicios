@@ -154,14 +154,14 @@ class ReservaControllerRescheduleTest {
     @Test
     void reprogramarReserva_conFranjaNoDisponible_devuelve409() throws Exception {
         when(reservaService.rescheduleReservation(any(), any(), any()))
-                .thenThrow(new ConflictException("El horario seleccionado ya está ocupado"));
+                .thenThrow(new ConflictException("No hay cupos disponibles"));
 
         mockMvc.perform(patch(URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(BODY_VALIDO)
                         .with(user(principal("CLIENTE", 5L))))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("El horario seleccionado ya está ocupado"));
+                .andExpect(jsonPath("$.error").value("No hay cupos disponibles"));
     }
 
     @Test

@@ -62,8 +62,9 @@ class AvailabilityServiceTest {
 
     @BeforeEach
     void setUp() {
-        availabilityService = new AvailabilityServiceImpl(
-                serviceLookupService, scheduleLookupService, reservaRepository, CLOCK_FIJO);
+        ReservationSlotPolicy slotPolicy =
+                new ReservationSlotPolicy(scheduleLookupService, reservaRepository);
+        availabilityService = new AvailabilityServiceImpl(serviceLookupService, slotPolicy, CLOCK_FIJO);
     }
 
     @Test
@@ -497,7 +498,7 @@ class AvailabilityServiceTest {
                 () -> availabilityService.validateRescheduleSlot(
                         query(fecha, 10, 0, 60, 60, null)));
 
-        assertEquals("El horario seleccionado ya está ocupado", ex.getMessage());
+        assertEquals(ReservationSlotPolicy.MSG_SIN_CUPOS, ex.getMessage());
     }
 
     @Test
@@ -524,7 +525,7 @@ class AvailabilityServiceTest {
                 () -> availabilityService.validateRescheduleSlot(
                         query(fecha, 10, 0, 30, 60, null)));
 
-        assertEquals("El horario seleccionado ya está ocupado", ex.getMessage());
+        assertEquals(ReservationSlotPolicy.MSG_SIN_CUPOS, ex.getMessage());
     }
 
     @Test

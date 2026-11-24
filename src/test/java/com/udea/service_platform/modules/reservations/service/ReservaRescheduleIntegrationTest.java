@@ -170,7 +170,7 @@ class ReservaRescheduleIntegrationTest {
                 () -> reservaService.rescheduleReservation(
                         reserva.getId(), request("11:00"), CLIENT_ID));
 
-        assertEquals("El horario seleccionado ya está ocupado", ex.getMessage());
+        assertEquals("No hay cupos disponibles", ex.getMessage());
         assertEquals(instante(9, 0), reserva.getHoraInicio());
     }
 

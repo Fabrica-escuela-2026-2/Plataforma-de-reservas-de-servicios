@@ -86,6 +86,12 @@ class ReservaServiceImplTest {
     private AvailabilityService availabilityService;
 
     @Mock
+    private ReservationResourceLock resourceLock;
+
+    @Mock
+    private ReservationSlotPolicy slotPolicy;
+
+    @Mock
     private NotificationService notificationService;
 
     private ReservaServiceImpl reservaService;
@@ -99,17 +105,34 @@ class ReservaServiceImplTest {
         Clock clock = Clock.fixed(ahora, TimeConfig.ZONA_BOGOTA);
         return new ReservaServiceImpl(reservaRepository, serviceLookupService, clientLookupService,
                 cancellationPolicy, statusTransitionPolicy, reschedulePolicy, applicationEventPublisher, accountLookupService,
-                availabilityService, notificationService, clock);
+                availabilityService, resourceLock, slotPolicy, notificationService, clock);
     }
 
     private void stubServicioDisponible(Service servicio) {
+        when(serviceLookupService.findActiveService(SERVICE_ID)).thenReturn(servicio);
         when(serviceLookupService.lockActiveService(SERVICE_ID)).thenReturn(servicio);
         when(accountLookupService.isAccountActive(PROVIDER_ID)).thenReturn(true);
     }
 
     private void stubDisponibilidad(String fecha, EstadoSlot estado) {
-        when(availabilityService.getAvailability(SERVICE_ID, LocalDate.parse(fecha)))
-                .thenReturn(disponibilidad(fecha, slot(14, 30, estado)));
+        stubEvaluacion(LocalTime.of(14, 30), estado);
+    }
+
+    private void stubEvaluacion(LocalTime horaValida, EstadoSlot estado) {
+        SlotDecision decision = switch (estado) {
+            case LIBRE -> new SlotDecision(EstadoSlot.LIBRE, SlotReason.OK, 1, 1, null);
+            case BLOQUEADA -> new SlotDecision(
+                    EstadoSlot.BLOQUEADA, SlotReason.PROVIDER_BLOCK, 1, 0, null);
+            case OCUPADA -> new SlotDecision(
+                    EstadoSlot.OCUPADA, SlotReason.CAPACITY_FULL, 1, 0,
+                    ReservationSlotPolicy.MSG_SIN_CUPOS);
+        };
+        when(slotPolicy.evaluate(any(), any(), any())).thenAnswer(invocacion ->
+                horaValida.equals(invocacion.getArgument(1)) ? decision : decisionFueraHorario());
+    }
+
+    private SlotDecision decisionFueraHorario() {
+        return new SlotDecision(EstadoSlot.BLOQUEADA, SlotReason.OUT_OF_SCHEDULE, 1, 0, null);
     }
 
     private void stubClienteYGuardado() {
@@ -193,8 +216,7 @@ class ReservaServiceImplTest {
         // 10:00:30 en Bogota: el slot de las 10:00 sigue siendo el del minuto en curso
         ReservaServiceImpl servicioConHoraActual = crearServicio(Instant.parse("2026-10-15T15:00:30Z"));
         stubServicioDisponible(servicio());
-        when(availabilityService.getAvailability(SERVICE_ID, LocalDate.parse("2026-10-15")))
-                .thenReturn(disponibilidad("2026-10-15", slot(10, 0, EstadoSlot.LIBRE)));
+        stubEvaluacion(LocalTime.of(10, 0), EstadoSlot.LIBRE);
         stubClienteYGuardado();
 
         ReservaResponse response = servicioConHoraActual.createReservation(
@@ -211,7 +233,7 @@ class ReservaServiceImplTest {
         ConflictException ex = assertThrows(ConflictException.class,
                 () -> reservaService.createReservation(request("2026-10-20", "14:30"), CLIENT_ID));
 
-        assertEquals("El horario ya no está disponible. Por favor elige otro horario.", ex.getMessage());
+        assertEquals(ReservationSlotPolicy.MSG_SIN_CUPOS, ex.getMessage());
         verify(reservaRepository, never()).save(any(Reserva.class));
         verifyNoInteractions(notificationService);
     }
@@ -246,8 +268,7 @@ class ReservaServiceImplTest {
     @Test
     void crearReserva_enUnDiaSinHorarioConfigurado_noSePuedeReservar() {
         stubServicioDisponible(servicio());
-        when(availabilityService.getAvailability(SERVICE_ID, LocalDate.parse("2026-10-25")))
-                .thenReturn(disponibilidad("2026-10-25"));
+        when(slotPolicy.evaluate(any(), any(), any())).thenReturn(decisionFueraHorario());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> reservaService.createReservation(request("2026-10-25", "14:30"), CLIENT_ID));
@@ -277,7 +298,7 @@ class ReservaServiceImplTest {
 
     @Test
     void crearReserva_conServicioNoDisponible_noCreaNada() {
-        when(serviceLookupService.lockActiveService(SERVICE_ID))
+        when(serviceLookupService.findActiveService(SERVICE_ID))
                 .thenThrow(new IllegalArgumentException("El servicio no está disponible"));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
@@ -290,6 +311,7 @@ class ReservaServiceImplTest {
 
     @Test
     void crearReserva_conCuentaDelProveedorInactiva_elServicioNoEstaDisponible() {
+        when(serviceLookupService.findActiveService(SERVICE_ID)).thenReturn(servicio());
         when(serviceLookupService.lockActiveService(SERVICE_ID)).thenReturn(servicio());
         when(accountLookupService.isAccountActive(PROVIDER_ID)).thenReturn(false);
 
