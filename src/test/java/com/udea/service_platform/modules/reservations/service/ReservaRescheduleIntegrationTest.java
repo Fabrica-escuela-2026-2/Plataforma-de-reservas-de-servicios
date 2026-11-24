@@ -98,7 +98,6 @@ class ReservaRescheduleIntegrationTest {
     void setUp() {
         servicio = serviceRepository.save(Service.builder()
                 .nombre("Corte")
-                .categoria("Cat")
                 .duracion(60)
                 .precio(new BigDecimal("25000.00"))
                 .idProveedor(PROVIDER_ID)

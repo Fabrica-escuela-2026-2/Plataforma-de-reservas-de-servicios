@@ -36,10 +36,21 @@ public final class RecursoTestData {
 
     public static void insertarServicio(JdbcTemplate jdbcTemplate, long id, long idProveedor,
                                         long idRecurso, boolean activo) {
+        long idCategoria = asegurarCategoria(jdbcTemplate, "QA");
         jdbcTemplate.update("INSERT INTO \"Servicios\" "
-                        + "(id_servicio, nombre, categoria, duracion, precio, usuario_proveedor, id_recursos, activo) "
-                        + "VALUES (?, ?, 'QA', 30, 1000, ?, ?, ?)",
-                id, "Servicio " + id, idProveedor, idRecurso, activo);
+                        + "(id_servicio, nombre, categoria_servicios, duracion, precio, "
+                        + "usuario_proveedor, id_recursos, activo) "
+                        + "VALUES (?, ?, ?, 30, 1000, ?, ?, ?)",
+                id, "Servicio " + id, idCategoria, idProveedor, idRecurso, activo);
+    }
+
+    private static long asegurarCategoria(JdbcTemplate jdbcTemplate, String nombre) {
+        jdbcTemplate.update(
+                "INSERT INTO \"Categorias\" (nombre) VALUES (?) ON CONFLICT (nombre) DO NOTHING",
+                nombre);
+        return jdbcTemplate.queryForObject(
+                "SELECT id_categoria FROM \"Categorias\" WHERE nombre = ?",
+                Long.class, nombre);
     }
 
     public static void insertarReserva(JdbcTemplate jdbcTemplate, long id, long idServicio,

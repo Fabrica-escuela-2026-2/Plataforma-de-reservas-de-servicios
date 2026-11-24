@@ -1,6 +1,9 @@
 
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.categories.model.Categoria;
+import com.udea.service_platform.modules.categories.service.CategoriaInfo;
+import com.udea.service_platform.modules.categories.service.CategoriaLookupService;
 import com.udea.service_platform.modules.core.exception.ResourceNotFoundException;
 import com.udea.service_platform.modules.resources.service.ResourceLookupService;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
@@ -32,6 +35,9 @@ class ServiceServiceUpdateTest {
     @Mock
     private ResourceLookupService resourceLookupService;
 
+    @Mock
+    private CategoriaLookupService categoriaLookupService;
+
     @InjectMocks
     private ServiceServiceImpl serviceService;
 
@@ -44,7 +50,7 @@ class ServiceServiceUpdateTest {
                 .id(10L)
                 .nombre("Corte")
                 .descripcion("Barbería")
-                .categoria("Belleza")
+                .categoria(Categoria.builder().id(1L).nombre("Belleza").build())
                 .duracion(30)
                 .precio(new BigDecimal("25000.00"))
                 .idProveedor(5L)
@@ -68,6 +74,8 @@ class ServiceServiceUpdateTest {
         when(serviceRepository.findById(10L))
                 .thenReturn(Optional.of(existingService));
         doNothing().when(resourceLookupService).validateLinkable(2L, 5L);
+        when(categoriaLookupService.resolveOrCreate("Belleza"))
+                .thenReturn(new CategoriaInfo(1L, "Belleza"));
         when(serviceRepository.save(any(Service.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -94,7 +102,7 @@ class ServiceServiceUpdateTest {
                         && Boolean.TRUE.equals(saved.getActivo())
                         && saved.getNombre().equals("Manicure")
                         && saved.getDescripcion().equals("Manicure con esmaltado")
-                        && saved.getCategoria().equals("Belleza")
+                        && saved.getCategoria().getNombre().equals("Belleza")
                         && saved.getDuracion().equals(45)
                         && saved.getPrecio().compareTo(
                                 new BigDecimal("35000.00")) == 0
@@ -174,6 +182,8 @@ class ServiceServiceUpdateTest {
     void updateService_mismoRecursoInactivo_noValidaYActualiza() {
         when(serviceRepository.findById(10L))
                 .thenReturn(Optional.of(existingService));
+        when(categoriaLookupService.resolveOrCreate("Belleza"))
+                .thenReturn(new CategoriaInfo(1L, "Belleza"));
         when(serviceRepository.save(any(Service.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -224,6 +234,8 @@ class ServiceServiceUpdateTest {
     void updateService_cambiaARecursoPropioActivo_actualiza() {
         when(serviceRepository.findById(10L))
                 .thenReturn(Optional.of(existingService));
+        when(categoriaLookupService.resolveOrCreate("Belleza"))
+                .thenReturn(new CategoriaInfo(1L, "Belleza"));
         when(serviceRepository.save(any(Service.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 

@@ -65,8 +65,8 @@ class ReservaHoraInicioRoundTripTest {
             statement.execute("ALTER TABLE \"Reservas\" ALTER COLUMN hora_inicio TYPE timestamptz "
                     + "USING hora_inicio AT TIME ZONE 'UTC'");
             statement.execute("INSERT INTO \"Servicios\" "
-                    + "(id_servicio, nombre, categoria, duracion, precio, usuario_proveedor, id_recursos, activo) "
-                    + "VALUES (" + SERVICE_ID + ", 'Servicio round trip', 'Cat', 30, 1000, 556, 1, true) "
+                    + "(id_servicio, nombre, categoria_servicios, duracion, precio, usuario_proveedor, id_recursos, activo) "
+                    + "VALUES (" + SERVICE_ID + ", 'Servicio round trip', NULL, 30, 1000, 556, 1, true) "
                     + "ON CONFLICT (id_servicio) DO NOTHING");
         }
     }

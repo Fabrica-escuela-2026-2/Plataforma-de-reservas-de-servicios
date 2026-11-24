@@ -145,8 +145,8 @@ class ReservaAvailabilityRepositoryTest {
 
     private void insertarServicio(Statement statement, long serviceId) throws Exception {
         statement.execute("INSERT INTO \"Servicios\" "
-                + "(id_servicio, nombre, categoria, duracion, precio, usuario_proveedor, id_recursos, activo) "
-                + "VALUES (" + serviceId + ", 'Servicio " + serviceId + "', 'Cat', 30, 1000, 555, 1, true)");
+                + "(id_servicio, nombre, categoria_servicios, duracion, precio, usuario_proveedor, id_recursos, activo) "
+                + "VALUES (" + serviceId + ", 'Servicio " + serviceId + "', NULL, 30, 1000, 555, 1, true)");
     }
 
     private void insertarReserva(Statement statement, long serviceId, int estado, Instant horaInicio) throws Exception {

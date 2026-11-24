@@ -1,5 +1,7 @@
 package com.udea.service_platform.modules.services.mapper;
 
+import com.udea.service_platform.modules.categories.model.Categoria;
+import com.udea.service_platform.modules.categories.service.CategoriaInfo;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
 import com.udea.service_platform.modules.services.model.Service;
@@ -12,11 +14,12 @@ public final class ServiceMapper {
 
     private ServiceMapper() {}
 
-    public static Service toEntity(ServiceRequest request, Long idProveedor) {
+    public static Service toEntity(ServiceRequest request, Long idProveedor,
+                                   CategoriaInfo categoria) {
         return Service.builder()
                 .nombre(request.getNombre())
-                .descripcion(request.getDescripcion())
-                .categoria(request.getCategoria())
+                .descripcion(request.getDescripcion() == null ? "" : request.getDescripcion())
+                .categoria(toCategoria(categoria))
                 .duracion(request.getDuracion())
                 .precio(request.getPrecio())
                 .idProveedor(idProveedor)
@@ -25,12 +28,23 @@ public final class ServiceMapper {
                 .build();
     }
 
+    public static Categoria toCategoria(CategoriaInfo info) {
+        return info == null
+                ? null
+                : Categoria.builder()
+                        .id(info.id())
+                        .nombre(info.nombre())
+                        .build();
+    }
+
     public static ServiceResponse toResponse(Service service) {
         return ServiceResponse.builder()
                 .id(service.getId())
                 .nombre(service.getNombre())
                 .descripcion(service.getDescripcion())
-                .categoria(service.getCategoria())
+                .categoria(service.getCategoria() == null
+                        ? null
+                        : service.getCategoria().getNombre())
                 .duracion(service.getDuracion())
                 .precio(service.getPrecio())
                 .idProveedor(service.getIdProveedor())

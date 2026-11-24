@@ -18,6 +18,9 @@ import java.util.Map;
  * despues de crear todos los singletons: el EntityManagerFactory ya aplico
  * ddl-auto=update y Tomcat aun no acepta peticiones. Es idempotente y no
  * aplica SET NOT NULL: el dato obligatorio se exige en el DTO y el servicio.
+ * Tampoco deja obligatorias las columnas que solo existen en la base real
+ * (por ejemplo "descripcion"): la entidad no las llena y un NOT NULL ajeno
+ * impediria crear recursos y arrancar la aplicacion.
  * <p>
  * Un mismo id_recursos podia estar vinculado a servicios de varios
  * proveedores. El primero conserva la fila; cada proveedor adicional recibe
@@ -31,6 +34,17 @@ public class RecursoMigration implements SmartInitializingSingleton {
     private static final String COLUMNA_ID = "id_recurso";
     private static final String INDICE = "ux_recursos_proveedor_nombre";
 
+    private static final String FILTRO_COLUMNAS_AJENAS = "FROM information_schema.columns "
+            + "WHERE table_schema = current_schema() AND table_name = 'Recursos' "
+            + "AND is_nullable = 'NO' AND is_identity = 'NO' AND column_default IS NULL "
+            + "AND column_name NOT IN ('id_recurso', 'nombre', 'id_proveedor', 'activo')";
+    private static final String SQL_COLUMNAS_OBLIGATORIAS_AJENAS =
+            "SELECT column_name " + FILTRO_COLUMNAS_AJENAS + " ORDER BY ordinal_position";
+    // Sentencia fija (sin concatenar datos): el servidor arma cada ALTER con format(%I).
+    private static final String SQL_RELAJAR_COLUMNAS_AJENAS = "DO $$ DECLARE columna text; BEGIN "
+            + "FOR columna IN SELECT column_name " + FILTRO_COLUMNAS_AJENAS + " LOOP "
+            + "EXECUTE format('ALTER TABLE %I ALTER COLUMN %I DROP NOT NULL', 'Recursos', columna); "
+            + "END LOOP; END $$";
     private static final String SQL_INFO_ID = "SELECT is_identity, column_default FROM information_schema.columns "
             + "WHERE table_schema = current_schema() AND table_name = ? AND column_name = ?";
     private static final String SQL_MAX_ID = "SELECT COALESCE(max(id_recurso), 0) FROM \"Recursos\"";
@@ -96,6 +110,21 @@ public class RecursoMigration implements SmartInitializingSingleton {
         jdbcTemplate.execute("ALTER TABLE \"Recursos\" ADD COLUMN IF NOT EXISTS id_proveedor bigint");
         jdbcTemplate.execute("ALTER TABLE \"Recursos\" ADD COLUMN IF NOT EXISTS activo boolean DEFAULT true");
         jdbcTemplate.execute("UPDATE \"Recursos\" SET activo = true WHERE activo IS NULL");
+        relajarColumnasObligatoriasAjenas();
+    }
+
+    /**
+     * Quita el NOT NULL de las columnas de "Recursos" que la aplicacion no
+     * conoce. No borra datos ni columnas; solo permite filas sin ese valor.
+     */
+    private void relajarColumnasObligatoriasAjenas() {
+        List<String> columnas = jdbcTemplate.queryForList(SQL_COLUMNAS_OBLIGATORIAS_AJENAS, String.class);
+        if (columnas.isEmpty()) {
+            return;
+        }
+        jdbcTemplate.execute(SQL_RELAJAR_COLUMNAS_AJENAS);
+        columnas.forEach(columna ->
+                log.warn("Migracion recursos: se quito NOT NULL de la columna \"{}\" de \"Recursos\"", columna));
     }
 
     private boolean asegurarIdentidad() {

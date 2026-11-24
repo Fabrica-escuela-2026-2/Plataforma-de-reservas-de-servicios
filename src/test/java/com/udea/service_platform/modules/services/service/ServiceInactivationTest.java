@@ -43,7 +43,6 @@ class ServiceInactivationTest {
                 .id(SERVICE_ID)
                 .nombre("Corte de cabello")
                 .descripcion("Servicio de barbería")
-                .categoria("Belleza")
                 .duracion(30)
                 .precio(new BigDecimal("25.00"))
                 .idProveedor(PROVIDER_ID)

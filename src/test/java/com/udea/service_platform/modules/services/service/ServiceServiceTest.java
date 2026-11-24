@@ -1,5 +1,8 @@
 package com.udea.service_platform.modules.services.service;
 
+import com.udea.service_platform.modules.categories.model.Categoria;
+import com.udea.service_platform.modules.categories.service.CategoriaInfo;
+import com.udea.service_platform.modules.categories.service.CategoriaLookupService;
 import com.udea.service_platform.modules.resources.service.ResourceLookupService;
 import com.udea.service_platform.modules.services.dto.ServiceRequest;
 import com.udea.service_platform.modules.services.dto.ServiceResponse;
@@ -28,6 +31,9 @@ class ServiceServiceTest {
     @Mock
     private ResourceLookupService resourceLookupService;
 
+    @Mock
+    private CategoriaLookupService categoriaLookupService;
+
     @InjectMocks
     private ServiceServiceImpl serviceService;
 
@@ -49,12 +55,14 @@ class ServiceServiceTest {
     void createService_withExistingRecurso_success() {
         // Arrange
         doNothing().when(resourceLookupService).validateLinkable(1L, 5L);
+        when(categoriaLookupService.resolveOrCreate("Belleza"))
+                .thenReturn(new CategoriaInfo(1L, "Belleza"));
 
         Service savedService = Service.builder()
                 .id(10L)
                 .nombre("Corte de cabello")
                 .descripcion("Servicio de barbería")
-                .categoria("Belleza")
+                .categoria(Categoria.builder().id(1L).nombre("Belleza").build())
                 .duracion(30)
                 .precio(new BigDecimal("25.00"))
                 .idProveedor(5L)
@@ -109,6 +117,8 @@ class ServiceServiceTest {
         Long providerId = 8L;
 
         doNothing().when(resourceLookupService).validateLinkable(1L, providerId);
+        when(categoriaLookupService.resolveOrCreate("Belleza"))
+                .thenReturn(new CategoriaInfo(1L, "Belleza"));
         when(serviceRepository.save(any(Service.class)))
                 .thenAnswer(invocation -> {
                     Service service = invocation.getArgument(0);
@@ -138,7 +148,7 @@ class ServiceServiceTest {
                         && request.getDescripcion().equals(
                                 service.getDescripcion())
                         && request.getCategoria().equals(
-                                service.getCategoria())
+                                service.getCategoria().getNombre())
                         && request.getDuracion().equals(service.getDuracion())
                         && request.getPrecio().compareTo(
                                 service.getPrecio()) == 0

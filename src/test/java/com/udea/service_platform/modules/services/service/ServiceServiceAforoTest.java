@@ -54,7 +54,6 @@ class ServiceServiceAforoTest {
                 .id(SERVICE_ID)
                 .nombre("Corte")
                 .descripcion("Barbería")
-                .categoria("Belleza")
                 .duracion(45)
                 .precio(new BigDecimal("25000.00"))
                 .idProveedor(PROVIDER_ID)

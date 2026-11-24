@@ -21,9 +21,24 @@ public final class ServiceTestData {
 
     public static void insertarServicio(JdbcTemplate jdbcTemplate, long id, long idProveedor,
                                         String categoria, boolean activo) {
+        long idCategoria = asegurarCategoria(jdbcTemplate, categoria);
         jdbcTemplate.update("INSERT INTO \"Servicios\" "
-                        + "(id_servicio, nombre, categoria, duracion, precio, usuario_proveedor, id_recursos, activo) "
+                        + "(id_servicio, nombre, categoria_servicios, duracion, precio, "
+                        + "usuario_proveedor, id_recursos, activo) "
                         + "VALUES (?, ?, ?, 30, 1000, ?, 1, ?)",
-                id, "Servicio " + id, categoria, idProveedor, activo);
+                id, "Servicio " + id, idCategoria, idProveedor, activo);
+    }
+
+    /**
+     * Returns the category id, creating the row when needed. The services table
+     * now references "Categorias" through categoria_servicios.
+     */
+    public static long asegurarCategoria(JdbcTemplate jdbcTemplate, String nombre) {
+        jdbcTemplate.update(
+                "INSERT INTO \"Categorias\" (nombre) VALUES (?) ON CONFLICT (nombre) DO NOTHING",
+                nombre);
+        return jdbcTemplate.queryForObject(
+                "SELECT id_categoria FROM \"Categorias\" WHERE nombre = ?",
+                Long.class, nombre);
     }
 }
