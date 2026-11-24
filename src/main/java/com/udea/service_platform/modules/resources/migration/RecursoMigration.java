@@ -34,10 +34,17 @@ public class RecursoMigration implements SmartInitializingSingleton {
     private static final String COLUMNA_ID = "id_recurso";
     private static final String INDICE = "ux_recursos_proveedor_nombre";
 
-    private static final List<String> COLUMNAS_PROPIAS = List.of(COLUMNA_ID, "nombre", "id_proveedor", "activo");
-    private static final String SQL_COLUMNAS_OBLIGATORIAS_AJENAS = "SELECT column_name FROM information_schema.columns "
-            + "WHERE table_schema = current_schema() AND table_name = ? AND is_nullable = 'NO' "
-            + "AND is_identity = 'NO' AND column_default IS NULL ORDER BY ordinal_position";
+    private static final String FILTRO_COLUMNAS_AJENAS = "FROM information_schema.columns "
+            + "WHERE table_schema = current_schema() AND table_name = 'Recursos' "
+            + "AND is_nullable = 'NO' AND is_identity = 'NO' AND column_default IS NULL "
+            + "AND column_name NOT IN ('id_recurso', 'nombre', 'id_proveedor', 'activo')";
+    private static final String SQL_COLUMNAS_OBLIGATORIAS_AJENAS =
+            "SELECT column_name " + FILTRO_COLUMNAS_AJENAS + " ORDER BY ordinal_position";
+    // Sentencia fija (sin concatenar datos): el servidor arma cada ALTER con format(%I).
+    private static final String SQL_RELAJAR_COLUMNAS_AJENAS = "DO $$ DECLARE columna text; BEGIN "
+            + "FOR columna IN SELECT column_name " + FILTRO_COLUMNAS_AJENAS + " LOOP "
+            + "EXECUTE format('ALTER TABLE %I ALTER COLUMN %I DROP NOT NULL', 'Recursos', columna); "
+            + "END LOOP; END $$";
     private static final String SQL_INFO_ID = "SELECT is_identity, column_default FROM information_schema.columns "
             + "WHERE table_schema = current_schema() AND table_name = ? AND column_name = ?";
     private static final String SQL_MAX_ID = "SELECT COALESCE(max(id_recurso), 0) FROM \"Recursos\"";
@@ -111,15 +118,13 @@ public class RecursoMigration implements SmartInitializingSingleton {
      * conoce. No borra datos ni columnas; solo permite filas sin ese valor.
      */
     private void relajarColumnasObligatoriasAjenas() {
-        List<String> columnas = jdbcTemplate.queryForList(SQL_COLUMNAS_OBLIGATORIAS_AJENAS, String.class, TABLA);
-        for (String columna : columnas) {
-            if (COLUMNAS_PROPIAS.contains(columna)) {
-                continue;
-            }
-            jdbcTemplate.execute("ALTER TABLE \"Recursos\" ALTER COLUMN \""
-                    + columna.replace("\"", "\"\"") + "\" DROP NOT NULL");
-            log.warn("Migracion recursos: se quito NOT NULL de la columna \"{}\" de \"Recursos\"", columna);
+        List<String> columnas = jdbcTemplate.queryForList(SQL_COLUMNAS_OBLIGATORIAS_AJENAS, String.class);
+        if (columnas.isEmpty()) {
+            return;
         }
+        jdbcTemplate.execute(SQL_RELAJAR_COLUMNAS_AJENAS);
+        columnas.forEach(columna ->
+                log.warn("Migracion recursos: se quito NOT NULL de la columna \"{}\" de \"Recursos\"", columna));
     }
 
     private boolean asegurarIdentidad() {
